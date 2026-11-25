@@ -549,7 +549,7 @@ $('#planRead').onclick=()=>{const r=parsePlan($('#planTxt').value),pv=$('#planOu
   o+='</table>';if(ok){o+='<button class="btn primary" id="planApply" style="margin-top:8px;width:100%">Appliquer à cette semaine</button>';PP={mon,items:r.items}}else PP=null;pv.innerHTML=o;
   const b=$('#planApply');if(b)b.onclick=()=>{PP.items.forEach(it=>{if(it.bad)return;if(it.rest){delete S.hrs[it.k];S.plan[it.k]='Repos'}else{const h=Math.round(it.h*100)/100;if(Math.abs(h-S.set.h)<.001)delete S.hrs[it.k];else S.hrs[it.k]=h;S.plan[it.k]=it.label}});saveS();wk=new Date(PP.mon);pv.innerHTML='<p class="note">Planning appliqué. Les heures de chaque jour restent modifiables.</p>';PP=null;renderProfil()}};
 /* --- Compte : nom + mot de passe, données synchronisées dans le Google Sheet « MapPrep – Comptes » --- */
-var acct=(()=>{const ENDPOINT='__ENDPOINT__';
+var acct=(()=>{const ENDPOINT='https://script.google.com/macros/s/AKfycbwUik2hqOs-tCVCFRxaV_5yoNcrxfdrEymwrDhJdc6y3WlTyLSVAAf-mJvukF9aztbWag/exec';
   let A=store.get('acct',null),timer=null,busy=false,again=false,msg='',err='';
   const ERR={exists:'Ce nom est déjà pris.',unknown:'Aucun compte à ce nom.',password:'Mot de passe incorrect.',missing:'Indique un nom et un mot de passe.',too_big:'Trop de données à envoyer.'};
   async function hash(n,p){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('mapprep|'+n.trim().toLowerCase()+'|'+p));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
@@ -605,7 +605,7 @@ load().then(()=>{
 <script>
 /* Mises à jour automatiques : à l'ouverture et à chaque retour sur l'appli, on vérifie version.json.
    Si une nouvelle version existe, le service worker l'installe et la page se recharge (le chrono et les données sont conservés). */
-(()=>{const APP_VERSION='202611251230';if(!('serviceWorker' in navigator))return;
+(()=>{const APP_VERSION='202611251236';if(!('serviceWorker' in navigator))return;
   let reloading=false;const hadCtrl=!!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloading||!hadCtrl)return;reloading=true;try{sessionStorage.setItem('gp_upd','1')}catch(e){}location.reload()});
   try{if(sessionStorage.getItem('gp_upd')){sessionStorage.removeItem('gp_upd');const t=document.getElementById('updToast');t.hidden=false;setTimeout(()=>t.hidden=true,3000)}}catch(e){}
