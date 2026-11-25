@@ -217,12 +217,6 @@ details.fold textarea.inp{min-height:90px}
         <div id="poiImport" hidden class="field"><textarea class="inp" id="poiImportTxt" placeholder="Colle ici une liste copiée"></textarea><button class="btn primary" id="poiImportGo">Importer</button></div>
         <p class="note" id="poiMsg"></p>
       </details>
-      <details class="card fold"><summary>Sauvegarde</summary>
-        <p class="note">Tes données restent sur ce téléphone. Pour changer de téléphone : Sauvegarder, copie le texte et garde-le, puis colle-le ici et touche Restaurer.</p>
-        <textarea class="inp" id="bkTxt" rows="3"></textarea>
-        <div class="btnrow"><button class="btn" id="bkOut">Sauvegarder</button><button class="btn" id="bkIn">Restaurer</button></div>
-        <p class="note" id="bkMsg"></p>
-      </details>
       <p class="note">Calculs repris de l'outil Quota colis.</p>
     </div>
   </section>
@@ -513,7 +507,6 @@ function renderProfil(){
     <div class="kpis"><div class="kpi"><b>${f0(c.c)}</b><span>colis</span></div><div class="kpi"><b>${f2(c.h)} h</b><span>heures éq.</span></div><div class="kpi"><b>${Math.round(pct*100)} %</b><span>objectif</span></div></div>
     <div class="bar${pct>=1?' ok':''}"><i style="width:${Math.min(100,pct*100)}%"></i></div>
     <div class="small">${pct>=1?'Quota de la journée atteint.':'Reste '+f2(rem)+' h sur '+f2(hd)+' h'}</div>
-    ${rem>0?`<table class="tbl">${FM.map(([f,n])=>`<tr><td>Reste en ${n}</td><td>${f0(rem*S.set.rate[f])} colis</td></tr>`).join('')}</table>`:''}
     <div class="lbl" style="margin-top:4px">Missions</div>
     <div class="mchips">${c.e.length?c.e.map((x,j)=>`<span class="mchip">${mLabel(x)}<button data-del="${j}" aria-label="Supprimer">✕</button></span>`).join(''):'<span class="small">Aucune mission ce jour.</span>'}</div>
     <div class="addrow"><select class="inp" id="addF">${FM.map(([f,n])=>`<option value="${f}"${f===S.fmt?' selected':''}>${n}</option>`).join('')}<option value="autre"${S.fmt==='autre'?' selected':''}>Autre</option></select><input class="inp" id="addN" type="number" min="1" inputmode="numeric" placeholder="${S.fmt==='autre'?'Minutes':'Colis'}"><button class="btn" id="addGo">Ajouter</button></div><input class="inp" id="addL" placeholder="Préciser la mission" maxlength="40" ${S.fmt==='autre'?'':'hidden'}>`;
@@ -571,7 +564,7 @@ var acct=(()=>{const ENDPOINT='https://script.google.com/macros/s/AKfycbwUik2hqO
       else{const r=await call({action:'login',name:n,hash:h});if(!r.ok)throw r.error;A={name:n.toLowerCase(),display:n,hash:h,updated:r.updated,synced:Date.now()};if(r.data&&r.data.quota)apply(r.data);msg='Connecté. Tes données ont été récupérées.'}save()}
     catch(e){err=ERR[e]||'Connexion impossible. Vérifie le réseau.';msg=''}render()}
   function render(keep){const el=$('#acctCard');if(!el)return;
-    if(!ENDPOINT||ENDPOINT.startsWith('__')){el.innerHTML='<div class="lbl">Mon compte</div><p class="note">Les comptes arrivent bientôt. En attendant, utilise la Sauvegarde plus bas pour changer d\'appareil.</p>';return}
+    if(!ENDPOINT||ENDPOINT.startsWith('__')){el.innerHTML='<div class="lbl">Mon compte</div><p class="note">Les comptes ne sont pas disponibles pour l\'instant.</p>';return}
     if(A){const t=A.synced?new Date(A.synced).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';el.innerHTML=`<div class="lbl">Mon compte</div><div class="hrow"><b style="font-size:20px">${esc(A.display||A.name)}</b><button class="btn" id="acOut" style="padding:8px 12px">Se déconnecter</button></div><p class="note">${err?esc(err):A.pending?'Synchronisation en attente…':'Données synchronisées'+(t?' à '+t:'')+'. Sur un autre téléphone, connecte-toi avec le même nom et mot de passe.'}</p>${msg?`<p class="note" style="color:var(--good)">${esc(msg)}</p>`:''}`;
       $('#acOut').onclick=()=>{A=null;store.set('acct',null);msg='';err='';render()};msg='';return}
     if($('#acName')){const m=$('#acMsg');m.textContent=err||msg;m.style.color=err?'var(--bad)':'';$('#acGo').disabled=$('#acNew').disabled=!!keep;return}
@@ -580,8 +573,6 @@ var acct=(()=>{const ENDPOINT='https://script.google.com/macros/s/AKfycbwUik2hqO
   addEventListener('online',push);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&A)pull()});
   return{dirty,render,start(){render();if(A&&ENDPOINT&&!ENDPOINT.startsWith('__'))pull()}}})();
 window.acct=acct;acct.start();
-$('#bkOut').onclick=()=>{const t=$('#bkTxt');t.value=JSON.stringify({quota:S,pois:POIS});t.select();try{navigator.clipboard.writeText(t.value).then(()=>$('#bkMsg').textContent='Copié. Garde ce texte dans tes notes ou un message.',()=>$('#bkMsg').textContent='Texte sélectionné : copie-le.')}catch(e){$('#bkMsg').textContent='Texte sélectionné : copie-le.'}};
-$('#bkIn').onclick=()=>{try{const p=JSON.parse($('#bkTxt').value);const q=p.quota||p;if(q&&q.set&&q.data){S=Object.assign({hrs:{},plan:{},fmt:'hyper'},q);saveS();if(Array.isArray(p.pois)){POIS=p.pois;savePois()}$('#setgrid').dataset.ok='';renderProfil();renderProd();$('#bkMsg').textContent='Données restaurées.'}else throw 0}catch(e){$('#bkMsg').textContent='Ce texte n\'est pas une sauvegarde valide.'}};
 
 
 const retheme=()=>{if(G){buildBase();draw()}};
@@ -605,7 +596,7 @@ load().then(()=>{
 <script>
 /* Mises à jour automatiques : à l'ouverture et à chaque retour sur l'appli, on vérifie version.json.
    Si une nouvelle version existe, le service worker l'installe et la page se recharge (le chrono et les données sont conservés). */
-(()=>{const APP_VERSION='202611251236';if(!('serviceWorker' in navigator))return;
+(()=>{const APP_VERSION='202611251243';if(!('serviceWorker' in navigator))return;
   let reloading=false;const hadCtrl=!!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloading||!hadCtrl)return;reloading=true;try{sessionStorage.setItem('gp_upd','1')}catch(e){}location.reload()});
   try{if(sessionStorage.getItem('gp_upd')){sessionStorage.removeItem('gp_upd');const t=document.getElementById('updToast');t.hidden=false;setTimeout(()=>t.hidden=true,3000)}}catch(e){}
