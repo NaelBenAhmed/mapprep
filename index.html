@@ -183,7 +183,8 @@ details.fold textarea.inp{min-height:90px}
       <div id="prodStart" class="card">
         <div class="lbl">Type de mission</div>
         <div class="types" id="types"></div>
-        <div class="field"><label class="lbl" for="nColis">Nombre de colis</label><input class="inp bigin" id="nColis" type="number" min="1" inputmode="numeric" pattern="[0-9]*" placeholder="0" enterkeyhint="go"></div>
+        <div class="field" id="autreF" hidden><label class="lbl" for="autreLbl">Préciser la mission</label><input class="inp" id="autreLbl" placeholder="Ex. inventaire, réception, nettoyage" enterkeyhint="go" maxlength="40"></div>
+        <div class="field" id="colisF"><label class="lbl" for="nColis">Nombre de colis</label><input class="inp bigin" id="nColis" type="number" min="1" inputmode="numeric" pattern="[0-9]*" placeholder="0" enterkeyhint="go"></div>
         <div class="planned" id="planned">&nbsp;</div>
         <button class="btn primary xl" id="startBtn">Démarrer</button>
       </div>
@@ -195,6 +196,7 @@ details.fold textarea.inp{min-height:90px}
   <section class="view scroll" id="vProfil" hidden>
     <div class="wrap">
       <h1 class="title">Profil</h1>
+      <div class="card" id="acctCard"></div>
       <div class="weeknav"><button id="wPrev" aria-label="Semaine précédente">‹</button><b id="wLbl"></b><button id="wNext" aria-label="Semaine suivante">›</button></div>
       <div class="days" id="days"></div>
       <div class="card" id="dayCard"></div>
@@ -433,7 +435,7 @@ $('#locBtn').onclick=()=>{if(geo.watch!=null){geo.stop();return}state.sheet='whe
 
 
 let poiSheetHtml='',poiXY=null;
-function savePois(){store.set('pois',POIS);renderPois();draw()}
+function savePois(){store.set('pois',POIS);renderPois();draw();if(window.acct)acct.dirty()}
 function renderPois(){$('#poiList').innerHTML=POIS.length?POIS.map(p=>`<li><span class="badge poi">${esc((POI_TYPES[p.type]||'Repère').split(' ')[0])}</span><span class="grow">${esc(p.name)}</span><button class="linkbtn" data-go="${esc(p.id)}">Y aller</button><button class="linkbtn" style="color:var(--bad)" data-del="${esc(p.id)}">Suppr.</button></li>`).join(''):'<li class="small">Aucun repère pour l\'instant.</li>';
   $('#poiList').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{POIS=POIS.filter(p=>p.id!==b.dataset.del);savePois()});
   $('#poiList').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const p=POIS.find(p=>p.id===b.dataset.go);tour=null;show('Plan');setTo(T.poi(p))})}
@@ -451,7 +453,7 @@ const DJ=['Lun','Mar','Mer','Jeu','Ven','Sam'];
 let S=store.get('quota',null)||{set:{h:7,d:5,pause:30,prime:131.59,rate:{hyper:135,market:111,proxi:85,carton:20,cash:110}},data:{},hrs:{},plan:{},fmt:'hyper'};
 S.hrs=S.hrs||{};S.plan=S.plan||{};S.data=S.data||{};S.fmt=S.fmt||'hyper';
 let TM=store.get('timer',null);
-const saveS=()=>store.set('quota',S),saveT=()=>store.set('timer',TM);
+const saveS=()=>{store.set('quota',S);if(window.acct)acct.dirty()},saveT=()=>store.set('timer',TM);
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const monday=d=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return x};
 const todayK=()=>iso(new Date());
@@ -461,28 +463,33 @@ const fd=m=>{m=Math.max(1,Math.round(m));if(m<60)return m+' min';const h=Math.fl
 const pad=n=>String(n).padStart(2,'0');
 const fh=m=>Math.floor(m/60)+'h'+pad(m%60);
 const fc=s=>{const neg=s<0,a=Math.abs(s),h=Math.floor(a/3600),m=Math.floor(a%3600/60);return(neg?'+':'')+(h?h+':'+pad(m):m)+':'+pad(a%60)};
-const nameOf=f=>(FM.find(m=>m[0]===f)||['',f])[1];
+const nameOf=f=>f==='autre'?'Autre':(FM.find(m=>m[0]===f)||['',f])[1];
+const hOf=x=>x.f==='autre'?(x.min||0)/60:x.n/S.set.rate[x.f];
+const mLabel=x=>x.f==='autre'?esc(x.label||'Autre')+' · '+fd(x.min||1):nameOf(x.f)+' '+f0(x.n)+' · '+fd(x.n/S.set.rate[x.f]*60);
 const dh=k=>{const x=S.hrs[k];return x>0?x:S.set.h};
-function calc(k){const e=S.data[k]||[];let h=0,c=0;e.forEach(x=>{h+=x.n/S.set.rate[x.f];c+=x.n});return{h,c,e}}
+function calc(k){const e=S.data[k]||[];let h=0,c=0;e.forEach(x=>{h+=hOf(x);if(x.f!=='autre')c+=x.n});return{h,c,e}}
 
 /* --- Onglet Prod : type + colis + chrono --- */
-function renderTypes(){$('#types').innerHTML=FM.map(([k,n])=>`<button aria-pressed="${S.fmt===k}" data-f="${k}">${n}<small>${S.set.rate[k]} colis/h</small></button>`).join('');$('#types').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.fmt=b.dataset.f;saveS();renderTypes();planned()})}
-function planned(){const n=parseInt($('#nColis').value,10);$('#planned').innerHTML=n>0?`Temps prévu : <b>${fd(n/S.set.rate[S.fmt]*60)}</b>`:'&nbsp;';$('#startBtn').disabled=!(n>0)}
-$('#nColis').addEventListener('input',planned);
+function renderTypes(){$('#types').innerHTML=FM.map(([k,n])=>`<button aria-pressed="${S.fmt===k}" data-f="${k}">${n}<small>${S.set.rate[k]} colis/h</small></button>`).join('')+`<button aria-pressed="${S.fmt==='autre'}" data-f="autre">Autre<small>à préciser</small></button>`;$('#types').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.fmt=b.dataset.f;saveS();renderTypes();planned()})}
+function planned(){const au=S.fmt==='autre';$('#autreF').hidden=!au;$('#colisF').hidden=au;if(au){const l=$('#autreLbl').value.trim();$('#planned').textContent='Le chrono compte ton temps, il sera ajouté à ta journée.';$('#startBtn').disabled=!l;return}const n=parseInt($('#nColis').value,10);$('#planned').innerHTML=n>0?`Temps prévu : <b>${fd(n/S.set.rate[S.fmt]*60)}</b>`:'&nbsp;';$('#startBtn').disabled=!(n>0)}
+$('#nColis').addEventListener('input',planned);$('#autreLbl').addEventListener('input',planned);$('#autreLbl').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#startBtn').click()}});
 $('#nColis').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#startBtn').click()}});
 let AC=null,WL=null;
-$('#startBtn').onclick=()=>{const n=parseInt($('#nColis').value,10);if(!(n>0)){$('#nColis').focus();return}if(TM)return;
+$('#startBtn').onclick=()=>{if(S.fmt==='autre'){const l=$('#autreLbl').value.trim();if(!l||TM)return;TM={f:'autre',label:l,up:true,start:Date.now(),acc:0,run:true};saveT();$('#autreLbl').value='';$('#autreLbl').blur();renderProd();return}const n=parseInt($('#nColis').value,10);if(!(n>0)){$('#nColis').focus();return}if(TM)return;
   try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();AC.resume()}catch(e){}
   const s=Math.max(1,Math.round(n/S.set.rate[S.fmt]*3600));TM={n,f:S.fmt,total:s,end:Date.now()+s*1000,run:true,beeped:false};
   (S.data[todayK()]=S.data[todayK()]||[]).push({f:S.fmt,n});saveS();saveT();$('#nColis').value='';$('#nColis').blur();planned();renderProd()};
-const tLeft=()=>!TM?0:TM.run?Math.round((TM.end-Date.now())/1000):TM.left;
+const tLeft=()=>!TM?0:TM.up?Math.round((TM.acc+(TM.run?Date.now()-TM.start:0))/1000):TM.run?Math.round((TM.end-Date.now())/1000):TM.left;
 function renderTimer(){const box=$('#timerBox');$('#prodStart').hidden=!!TM;if(!TM){box.innerHTML='';wake(false);return}const l=tLeft();
+  if(TM.up){box.innerHTML=`<div class="card tcard"><div class="tinfo">Autre · ${esc(TM.label)}</div><div class="small" style="text-align:center">Temps passé</div><div class="timer huge" id="tm">${fc(l)}</div><div class="small" style="text-align:center" id="tl">${TM.run?'En cours':'En pause'}</div><div class="btnrow"><button class="btn" id="tPause">${TM.run?'Pause':'Reprendre'}</button><button class="btn primary" id="tStop">Mission finie</button></div></div>`;
+    $('#tPause').onclick=()=>{if(TM.run){TM.acc+=Date.now()-TM.start;TM.run=false}else{TM.start=Date.now();TM.run=true}saveT();renderTimer()};
+    $('#tStop').onclick=()=>{const min=Math.max(1,Math.round(tLeft()/60));(S.data[todayK()]=S.data[todayK()]||[]).push({f:'autre',label:TM.label,min});TM=null;saveS();saveT();renderProd()};wake(TM.run);return}
   box.innerHTML=`<div class="card tcard${l<=0?' late':''}"><div class="tinfo">${nameOf(TM.f)} · ${f0(TM.n)} colis</div><div class="small" style="text-align:center">Temps prévu ${fd(TM.total/60)}</div><div class="timer huge${l<=0?' over':''}" id="tm">${fc(l)}</div><div class="small" style="text-align:center" id="tl">${l<=0?'Temps dépassé':TM.run?'Temps restant':'En pause'}</div><div class="btnrow"><button class="btn" id="tPause">${TM.run?'Pause':'Reprendre'}</button><button class="btn primary" id="tStop">Mission finie</button></div></div>`;
   $('#tPause').onclick=()=>{if(TM.run){TM.left=tLeft();TM.run=false}else{TM.end=Date.now()+TM.left*1000;TM.run=true}saveT();renderTimer()};
   $('#tStop').onclick=()=>{TM=null;saveT();renderProd()};wake(TM.run)}
 function wake(on){try{if(on&&!WL&&navigator.wakeLock)navigator.wakeLock.request('screen').then(x=>{WL=x;x.addEventListener('release',()=>WL=null)}).catch(()=>{});else if(!on&&WL){WL.release();WL=null}}catch(e){}}
 function beep(){try{navigator.vibrate&&navigator.vibrate([300,150,300,150,300])}catch(e){}try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.connect(g);g.connect(AC.destination);o.frequency.value=880;g.gain.value=.2;o.start();o.stop(AC.currentTime+.6)}catch(e){}}
-setInterval(()=>{if(!TM)return;const l=tLeft();if(l<=0&&TM.run&&!TM.beeped){TM.beeped=true;saveT();beep();if(curView==='Prod')renderTimer()}const e=$('#tm');if(e){e.textContent=fc(l);e.classList.toggle('over',l<=0);$('#tl').textContent=l<=0?'Temps dépassé':TM.run?'Temps restant':'En pause'}},1000);
+setInterval(()=>{if(!TM)return;const l=tLeft();if(TM.up){const e=$('#tm');if(e)e.textContent=fc(l);return}if(l<=0&&TM.run&&!TM.beeped){TM.beeped=true;saveT();beep();if(curView==='Prod')renderTimer()}const e=$('#tm');if(e){e.textContent=fc(l);e.classList.toggle('over',l<=0);$('#tl').textContent=l<=0?'Temps dépassé':TM.run?'Temps restant':'En pause'}},1000);
 function renderProd(){renderTypes();planned();renderTimer();const k=todayK(),c=calc(k),hd=dh(k),pct=c.h/hd;
   $('#daySum').innerHTML=`<div class="row"><span class="lbl">Aujourd'hui</span><span class="small">${c.e.length} mission${c.e.length>1?'s':''} · ${f0(c.c)} colis</span></div><div class="row"><b>${Math.round(pct*100)} %</b><span class="small">${f2(c.h)} h sur ${f2(hd)} h</span></div><div class="bar${pct>=1?' ok':''}"><i style="width:${Math.min(100,pct*100)}%"></i></div>`}
 $('#daySum').onclick=()=>{wk=monday(new Date());sel=Math.min(5,(new Date().getDay()+6)%7);show('Profil')};
@@ -492,12 +499,12 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&TM){wake(
 let wk=monday(new Date()),sel=Math.min(5,(new Date().getDay()+6)%7);
 const curK=()=>{const d=new Date(wk);d.setDate(d.getDate()+sel);return iso(d)};
 $('#wPrev').onclick=()=>{wk.setDate(wk.getDate()-7);renderProfil()};$('#wNext').onclick=()=>{wk.setDate(wk.getDate()+7);renderProfil()};
-function monthStats(k){const pre=k.slice(0,7);let H=0,n=0,Wh=0,OT=0;Object.keys(S.data).forEach(d=>{if(d.slice(0,7)===pre){const c=calc(d);if(c.c>0){H+=c.h;n++;const h=dh(d);Wh+=h;OT+=Math.max(0,h-S.set.h)}}});return{H,n,W:Wh,OT}}
+function monthStats(k){const pre=k.slice(0,7);let H=0,n=0,Wh=0,OT=0;Object.keys(S.data).forEach(d=>{if(d.slice(0,7)===pre){const c=calc(d);if(c.e.length>0){H+=c.h;n++;const h=dh(d);Wh+=h;OT+=Math.max(0,h-S.set.h)}}});return{H,n,W:Wh,OT}}
 function renderProfil(){
   const days=[];for(let i=0;i<6;i++){const d=new Date(wk);d.setDate(d.getDate()+i);days.push({k:iso(d),n:d.getDate()})}
-  let H=0,worked=0,WH=0;const calcs=days.map(d=>{const c=calc(d.k);H+=c.h;if(c.c>0){worked++;WH+=dh(d.k)}return c});
+  let H=0,worked=0,WH=0;const calcs=days.map(d=>{const c=calc(d.k);H+=c.h;if(c.e.length>0){worked++;WH+=dh(d.k)}return c});
   $('#wLbl').textContent='Semaine du '+wk.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
-  $('#days').innerHTML=days.map((d,j)=>{const p=calcs[j].h/dh(d.k),cl=calcs[j].c>0?(p>=1?'ok':'wa'):'';return`<button class="${cl}" aria-pressed="${j===sel}" data-j="${j}">${DJ[j]}<small>${d.n}${calcs[j].c>0?' · '+Math.round(p*100)+'%':''}</small></button>`}).join('');
+  $('#days').innerHTML=days.map((d,j)=>{const p=calcs[j].h/dh(d.k),cl=calcs[j].e.length>0?(p>=1?'ok':'wa'):'';return`<button class="${cl}" aria-pressed="${j===sel}" data-j="${j}">${DJ[j]}<small>${d.n}${calcs[j].e.length>0?' · '+Math.round(p*100)+'%':''}</small></button>`}).join('');
   $('#days').querySelectorAll('button').forEach(b=>b.onclick=()=>{sel=+b.dataset.j;renderProfil()});
   const k=days[sel].k,c=calcs[sel],hd=dh(k),pct=c.h/hd,rem=Math.max(0,hd-c.h);
   $('#dayCard').innerHTML=`<div class="lbl">Journée</div>
@@ -508,11 +515,12 @@ function renderProfil(){
     <div class="small">${pct>=1?'Quota de la journée atteint.':'Reste '+f2(rem)+' h sur '+f2(hd)+' h'}</div>
     ${rem>0?`<table class="tbl">${FM.map(([f,n])=>`<tr><td>Reste en ${n}</td><td>${f0(rem*S.set.rate[f])} colis</td></tr>`).join('')}</table>`:''}
     <div class="lbl" style="margin-top:4px">Missions</div>
-    <div class="mchips">${c.e.length?c.e.map((x,j)=>`<span class="mchip">${nameOf(x.f)} ${f0(x.n)} · ${fd(x.n/S.set.rate[x.f]*60)}<button data-del="${j}" aria-label="Supprimer">✕</button></span>`).join(''):'<span class="small">Aucune mission ce jour.</span>'}</div>
-    <div class="addrow"><select class="inp" id="addF">${FM.map(([f,n])=>`<option value="${f}"${f===S.fmt?' selected':''}>${n}</option>`).join('')}</select><input class="inp" id="addN" type="number" min="1" inputmode="numeric" placeholder="Colis"><button class="btn" id="addGo">Ajouter</button></div>`;
+    <div class="mchips">${c.e.length?c.e.map((x,j)=>`<span class="mchip">${mLabel(x)}<button data-del="${j}" aria-label="Supprimer">✕</button></span>`).join(''):'<span class="small">Aucune mission ce jour.</span>'}</div>
+    <div class="addrow"><select class="inp" id="addF">${FM.map(([f,n])=>`<option value="${f}"${f===S.fmt?' selected':''}>${n}</option>`).join('')}<option value="autre"${S.fmt==='autre'?' selected':''}>Autre</option></select><input class="inp" id="addN" type="number" min="1" inputmode="numeric" placeholder="${S.fmt==='autre'?'Minutes':'Colis'}"><button class="btn" id="addGo">Ajouter</button></div><input class="inp" id="addL" placeholder="Préciser la mission" maxlength="40" ${S.fmt==='autre'?'':'hidden'}>`;
+  $('#addF').onchange=()=>{const au=$('#addF').value==='autre';$('#addL').hidden=!au;$('#addN').placeholder=au?'Minutes':'Colis'};
   $('#hj').onchange=e=>{const x=parseFloat(String(e.target.value).replace(',','.'));if(x>0&&x<=24&&x!==S.set.h)S.hrs[k]=x;else delete S.hrs[k];saveS();renderProfil()};
   $('#dayCard').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{S.data[k].splice(+b.dataset.del,1);saveS();renderProfil()});
-  $('#addGo').onclick=()=>{const n=parseInt($('#addN').value,10);if(!(n>0))return;(S.data[k]=S.data[k]||[]).push({f:$('#addF').value,n});saveS();renderProfil()};
+  $('#addGo').onclick=()=>{const n=parseInt($('#addN').value,10);if(!(n>0))return;const f=$('#addF').value;if(f==='autre'){const l=$('#addL').value.trim();if(!l){$('#addL').focus();return}(S.data[k]=S.data[k]||[]).push({f,label:l,min:n})}else(S.data[k]=S.data[k]||[]).push({f,n});saveS();renderProfil()};
   const obj=S.set.h*S.set.d,avg=WH?H/WH:0;
   $('#weekCard').innerHTML=`<div class="lbl">Semaine</div><div class="kpis"><div class="kpi"><b>${f2(H)} h</b><span>heures éq.</span></div><div class="kpi"><b>${f2(WH)} h</b><span>travaillées</span></div><div class="kpi"><b>${Math.round(avg*100)} %</b><span>rendement</span></div></div>
     <div class="bar${avg>=1?' ok':''}"><i style="width:${Math.min(100,avg*100)}%"></i></div>
@@ -540,6 +548,38 @@ $('#planRead').onclick=()=>{const r=parsePlan($('#planTxt').value),pv=$('#planOu
   r.items.forEach(it=>{const d=new Date(mon);d.setDate(d.getDate()+it.di);it.k=iso(d);const dn=DJ[it.di]+' '+d.getDate();if(it.bad)o+=`<tr><td>${dn}</td><td>Non reconnu : ${esc(it.raw)}</td></tr>`;else{ok++;o+=`<tr><td>${dn}</td><td>${it.rest?'Repos':esc(it.label)+' → '+f2(it.h)+' h'}</td></tr>`}});
   o+='</table>';if(ok){o+='<button class="btn primary" id="planApply" style="margin-top:8px;width:100%">Appliquer à cette semaine</button>';PP={mon,items:r.items}}else PP=null;pv.innerHTML=o;
   const b=$('#planApply');if(b)b.onclick=()=>{PP.items.forEach(it=>{if(it.bad)return;if(it.rest){delete S.hrs[it.k];S.plan[it.k]='Repos'}else{const h=Math.round(it.h*100)/100;if(Math.abs(h-S.set.h)<.001)delete S.hrs[it.k];else S.hrs[it.k]=h;S.plan[it.k]=it.label}});saveS();wk=new Date(PP.mon);pv.innerHTML='<p class="note">Planning appliqué. Les heures de chaque jour restent modifiables.</p>';PP=null;renderProfil()}};
+/* --- Compte : nom + mot de passe, données synchronisées dans le Google Sheet « MapPrep – Comptes » --- */
+var acct=(()=>{const ENDPOINT='__ENDPOINT__';
+  let A=store.get('acct',null),timer=null,busy=false,again=false,msg='',err='';
+  const ERR={exists:'Ce nom est déjà pris.',unknown:'Aucun compte à ce nom.',password:'Mot de passe incorrect.',missing:'Indique un nom et un mot de passe.',too_big:'Trop de données à envoyer.'};
+  async function hash(n,p){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('mapprep|'+n.trim().toLowerCase()+'|'+p));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+  async function call(o){const r=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(o),redirect:'follow'});return r.json()}
+  const cut=()=>iso(new Date(Date.now()-150*864e5));
+  function payload(){const c=cut(),f=o=>{const r={};Object.keys(o||{}).forEach(k=>{if(k>=c)r[k]=o[k]});return r};return{quota:Object.assign({},S,{data:f(S.data),hrs:f(S.hrs),plan:f(S.plan)}),pois:POIS}}
+  function apply(d){if(d&&d.quota&&d.quota.set){const c=cut(),old={};Object.keys(S.data).forEach(k=>{if(k<c)old[k]=S.data[k]});S=Object.assign({hrs:{},plan:{},data:{},fmt:'hyper'},d.quota);S.data=Object.assign(old,S.data||{});store.set('quota',S)}
+    if(d&&Array.isArray(d.pois)){POIS=d.pois;store.set('pois',POIS);renderPois();draw()}$('#setgrid').dataset.ok='';if(curView==='Profil')renderProfil();if(curView==='Prod')renderProd()}
+  const save=()=>store.set('acct',A);
+  function dirty(){if(!A)return;A.updated=Date.now();A.pending=true;save();clearTimeout(timer);timer=setTimeout(push,2500)}
+  async function push(){if(!A||!A.pending)return;if(busy){again=true;return}busy=true;const up=A.updated;
+    try{const r=await call({action:'save',name:A.name,hash:A.hash,data:payload(),updated:up});if(r.ok){if(A&&A.updated===up)A.pending=false;if(A){A.synced=Date.now();save()}err=''}else if(r.error==='password'||r.error==='unknown'){err='Ton compte n\'est plus reconnu : reconnecte-toi.';A=null;store.set('acct',null)}else err=ERR[r.error]||'Synchronisation impossible pour l\'instant.'}
+    catch(e){err='Pas de réseau : la synchro se fera plus tard.'}busy=false;render();if(again){again=false;push()}}
+  async function pull(){if(!A)return;try{const r=await call({action:'login',name:A.name,hash:A.hash});if(!r.ok){if(r.error==='password'||r.error==='unknown'){A=null;store.set('acct',null);err='Ton compte n\'est plus reconnu : reconnecte-toi.'}render();return}
+      if(r.updated>(A.updated||0)&&!A.pending){apply(r.data);A.updated=r.updated}else if(A.pending||(A.updated||0)>r.updated){A.pending=true;push()}A.synced=Date.now();save();err=''}catch(e){err='Pas de réseau : la synchro se fera plus tard.'}render()}
+  async function connect(isNew){const n=$('#acName').value.trim(),p=$('#acPwd').value;if(!n||!p){err=ERR.missing;render();return}
+    $('#acGo').disabled=$('#acNew').disabled=true;err='';msg=isNew?'Création du compte…':'Connexion…';render(true);
+    try{const h=await hash(n,p);if(isNew){const up=Date.now();const r=await call({action:'register',name:n,hash:h,data:payload(),updated:up});if(!r.ok)throw r.error;A={name:n.toLowerCase(),display:n,hash:h,updated:up,synced:Date.now()};msg='Compte créé. Tes données sont sauvegardées.'}
+      else{const r=await call({action:'login',name:n,hash:h});if(!r.ok)throw r.error;A={name:n.toLowerCase(),display:n,hash:h,updated:r.updated,synced:Date.now()};if(r.data&&r.data.quota)apply(r.data);msg='Connecté. Tes données ont été récupérées.'}save()}
+    catch(e){err=ERR[e]||'Connexion impossible. Vérifie le réseau.';msg=''}render()}
+  function render(keep){const el=$('#acctCard');if(!el)return;
+    if(!ENDPOINT||ENDPOINT.startsWith('__')){el.innerHTML='<div class="lbl">Mon compte</div><p class="note">Les comptes arrivent bientôt. En attendant, utilise la Sauvegarde plus bas pour changer d\'appareil.</p>';return}
+    if(A){const t=A.synced?new Date(A.synced).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';el.innerHTML=`<div class="lbl">Mon compte</div><div class="hrow"><b style="font-size:20px">${esc(A.display||A.name)}</b><button class="btn" id="acOut" style="padding:8px 12px">Se déconnecter</button></div><p class="note">${err?esc(err):A.pending?'Synchronisation en attente…':'Données synchronisées'+(t?' à '+t:'')+'. Sur un autre téléphone, connecte-toi avec le même nom et mot de passe.'}</p>${msg?`<p class="note" style="color:var(--good)">${esc(msg)}</p>`:''}`;
+      $('#acOut').onclick=()=>{A=null;store.set('acct',null);msg='';err='';render()};msg='';return}
+    if($('#acName')){const m=$('#acMsg');m.textContent=err||msg;m.style.color=err?'var(--bad)':'';$('#acGo').disabled=$('#acNew').disabled=!!keep;return}
+    el.innerHTML=`<div class="lbl">Mon compte</div><p class="note">Crée un compte pour retrouver tes missions et réglages sur un autre téléphone.</p><input class="inp" id="acName" autocomplete="username" placeholder="Nom (ex. prénom.nom)"><input class="inp" id="acPwd" type="password" autocomplete="current-password" placeholder="Mot de passe"><div class="btnrow"><button class="btn primary" id="acGo">Se connecter</button><button class="btn" id="acNew">Créer un compte</button></div><p class="note" id="acMsg" style="${err?'color:var(--bad)':''}">${esc(err||msg)}</p>`;
+    $('#acGo').onclick=()=>connect(false);$('#acNew').onclick=()=>connect(true)}
+  addEventListener('online',push);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&A)pull()});
+  return{dirty,render,start(){render();if(A&&ENDPOINT&&!ENDPOINT.startsWith('__'))pull()}}})();
+window.acct=acct;acct.start();
 $('#bkOut').onclick=()=>{const t=$('#bkTxt');t.value=JSON.stringify({quota:S,pois:POIS});t.select();try{navigator.clipboard.writeText(t.value).then(()=>$('#bkMsg').textContent='Copié. Garde ce texte dans tes notes ou un message.',()=>$('#bkMsg').textContent='Texte sélectionné : copie-le.')}catch(e){$('#bkMsg').textContent='Texte sélectionné : copie-le.'}};
 $('#bkIn').onclick=()=>{try{const p=JSON.parse($('#bkTxt').value);const q=p.quota||p;if(q&&q.set&&q.data){S=Object.assign({hrs:{},plan:{},fmt:'hyper'},q);saveS();if(Array.isArray(p.pois)){POIS=p.pois;savePois()}$('#setgrid').dataset.ok='';renderProfil();renderProd();$('#bkMsg').textContent='Données restaurées.'}else throw 0}catch(e){$('#bkMsg').textContent='Ce texte n\'est pas une sauvegarde valide.'}};
 
@@ -565,7 +605,7 @@ load().then(()=>{
 <script>
 /* Mises à jour automatiques : à l'ouverture et à chaque retour sur l'appli, on vérifie version.json.
    Si une nouvelle version existe, le service worker l'installe et la page se recharge (le chrono et les données sont conservés). */
-(()=>{const APP_VERSION='202611251154';if(!('serviceWorker' in navigator))return;
+(()=>{const APP_VERSION='202611251230';if(!('serviceWorker' in navigator))return;
   let reloading=false;const hadCtrl=!!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloading||!hadCtrl)return;reloading=true;try{sessionStorage.setItem('gp_upd','1')}catch(e){}location.reload()});
   try{if(sessionStorage.getItem('gp_upd')){sessionStorage.removeItem('gp_upd');const t=document.getElementById('updToast');t.hidden=false;setTimeout(()=>t.hidden=true,3000)}}catch(e){}
