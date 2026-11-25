@@ -1,0 +1,576 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f2b705"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Prépa"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png"><style>:root{padding-top:env(safe-area-inset-top)}body{margin:0}img{max-width:100%}</style></head><body>
+<title>Guide Préparateur Epaux</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: phone-first app shell. Full-screen map with floating search card on top and a bottom sheet; bottom tab bar (Plan, Tournée, Repères, Prod). */
+:root{
+  --bg:#e9edf1; --panel:#ffffff; --panel2:#f2f4f7; --fg:#16202b; --muted:#5a6776; --line:#d3dae2;
+  --accent:#f2b705; --accent-ink:#1d1600; --route:#1764d6; --route-case:#ffffff;
+  --good:#1f8a4c; --bad:#c2372f; --warn:#b97a00;
+  --floor:#f8f9fa; --rack:#9db0c5; --wall:#2b3541; --quai:#6f4cc3; --poi:#d6336c; --sel:#f2b705; --me:#1764d6;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --r:14px; --shadow:0 4px 18px rgb(15 25 40/.16);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f141a; --panel:#171f28; --panel2:#1f2934; --fg:#e5eaf0; --muted:#94a2b3; --line:#2b3644;
+  --accent:#f5c22b; --accent-ink:#1d1600; --route:#4d9bff; --route-case:#0f141a;
+  --good:#3cbc72; --bad:#ef6a5f; --warn:#e3a72f;
+  --floor:#19212b; --rack:#405672; --wall:#8b9aab; --quai:#a98cf0; --poi:#f06595; --sel:#f5c22b; --me:#4d9bff;
+  --shadow:0 4px 18px rgb(0 0 0/.5); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141a; --panel:#171f28; --panel2:#1f2934; --fg:#e5eaf0; --muted:#94a2b3; --line:#2b3644;
+  --accent:#f5c22b; --accent-ink:#1d1600; --route:#4d9bff; --route-case:#0f141a;
+  --good:#3cbc72; --bad:#ef6a5f; --warn:#e3a72f;
+  --floor:#19212b; --rack:#405672; --wall:#8b9aab; --quai:#a98cf0; --poi:#f06595; --sel:#f5c22b; --me:#4d9bff;
+  --shadow:0 4px 18px rgb(0 0 0/.5); color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.4;overflow:hidden;-webkit-tap-highlight-color:transparent}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--route);outline-offset:2px}
+.app{height:100%;display:flex;flex-direction:column}
+main{flex:1;min-height:0;position:relative}
+.view{position:absolute;inset:0}
+.scroll{overflow:auto;-webkit-overflow-scrolling:touch}
+.wrap{max-width:560px;margin:0 auto;padding-block:16px 28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+nav.tabbar{display:grid;grid-template-columns:repeat(4,1fr);background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+nav.tabbar button{border:0;background:none;padding:8px 2px 9px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;font-weight:600;color:var(--muted)}
+nav.tabbar svg{width:24px;height:24px}
+nav.tabbar button[aria-selected="true"]{color:var(--fg)}
+nav.tabbar button[aria-selected="true"] .ico{background:var(--accent);color:var(--accent-ink)}
+nav.tabbar .ico{display:grid;place-items:center;width:52px;height:28px;border-radius:999px}
+.mapwrap{position:absolute;inset:0;background:var(--floor);touch-action:none}
+canvas#map{position:absolute;inset:0;width:100%;height:100%;display:block}
+.top{position:absolute;left:0;right:0;top:0;padding-top:10px;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px));pointer-events:none;display:flex;justify-content:center}
+.searchcard{pointer-events:auto;width:100%;max-width:520px;background:var(--panel);border-radius:var(--r);box-shadow:var(--shadow);padding:8px;display:flex;flex-direction:column;gap:4px;position:relative}
+.srow{display:flex;align-items:center;gap:8px}
+.srow input{flex:1;min-width:0;border:0;background:var(--panel2);border-radius:10px;padding:11px 12px;font-size:17px}
+.srow input:focus{outline:2px solid var(--route);background:var(--panel)}
+.fromline{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);padding:2px 4px;white-space:nowrap}
+.fromline .dot{width:11px;height:11px;border-radius:50%;border:3px solid var(--route);flex:none}
+.fromline b{color:var(--fg);font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.linkbtn{border:0;background:none;color:var(--route);font-weight:700;padding:4px 6px;font-size:14px;flex:none}
+.results{list-style:none;margin:4px 0 0;padding:0;max-height:50vh;overflow:auto;border-top:1px solid var(--line)}
+.results li{display:flex;gap:10px;align-items:center;padding:10px 6px;border-radius:8px;cursor:pointer}
+.results li[aria-selected="true"],.results li:active{background:var(--panel2)}
+.badge{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 6px;border-radius:5px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);flex:none;min-width:58px;text-align:center}
+.badge.loc{color:var(--route)} .badge.quai{color:var(--quai)} .badge.poi{color:var(--poi)} .badge.aisle{color:var(--warn)}
+.code{font-family:var(--f-mono);font-weight:600}
+.small{font-size:14px;color:var(--muted)}
+.fab{position:absolute;right:calc(10px + env(safe-area-inset-right,0px));bottom:12px;display:flex;flex-direction:column;gap:8px;transition:bottom .2s}
+.fab button{width:46px;height:46px;border-radius:12px;border:1px solid var(--line);background:var(--panel);box-shadow:var(--shadow);font-size:22px;font-weight:600;display:grid;place-items:center}
+.fab button svg{width:22px;height:22px}
+.fab button.on{background:var(--route);color:#fff;border-color:transparent}
+.hint{position:absolute;left:50%;top:96px;transform:translateX(-50%);background:var(--accent);color:var(--accent-ink);font-weight:700;padding:8px 16px;border-radius:999px;font-size:15px;box-shadow:var(--shadow);white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis}
+.sheet{position:absolute;left:0;right:0;bottom:0;padding-bottom:10px;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px));display:flex;justify-content:center;pointer-events:none}
+.sheet>.card{pointer-events:auto;width:100%;max-width:520px;box-shadow:var(--shadow);max-height:52vh;overflow:auto}
+.card{background:var(--panel);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:10px;border:1px solid var(--line)}
+.rhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.big{font-family:var(--f-display);font-size:34px;line-height:1}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--panel2);border:1px solid var(--line)}
+.chip.dyn{border-color:var(--warn);color:var(--warn)}
+.btn{border:1px solid var(--line);background:var(--panel2);padding:12px 14px;border-radius:12px;font-weight:700;font-size:16px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.btn.blue{background:var(--route);color:#fff;border-color:transparent}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btnrow .btn{flex:1}
+h1.title{font-family:var(--f-display);font-size:28px;text-transform:uppercase;letter-spacing:.03em;margin:0;text-wrap:balance}
+.lbl{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+.field{display:flex;flex-direction:column;gap:6px;position:relative}
+.inp{width:100%;min-width:0;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);font-size:17px}
+.inp:focus{border-color:var(--route);outline:none;background:var(--panel)}
+textarea.inp{min-height:120px;resize:vertical;font-family:var(--f-mono);font-size:15px}
+.stops{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.stops li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:var(--panel2)}
+.stops .n{width:26px;height:26px;border-radius:50%;background:var(--route);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700;flex:none}
+.stops li.done{opacity:.5} .stops li.done .code{text-decoration:line-through}
+.stops li.cur{outline:2px solid var(--accent)}
+.stops .grow{flex:1;min-width:0}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.list li{display:flex;align-items:center;gap:8px;padding:10px;background:var(--panel2);border-radius:10px}
+.list .grow{flex:1;min-width:0}
+.note{font-size:14px;color:var(--muted);margin:0}
+.types{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px}
+.types button{border:1px solid var(--line);background:var(--panel2);border-radius:12px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;font-weight:700;font-size:16px}
+.types button small{font-weight:600;font-size:12px;color:var(--muted)}
+.types button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.types button[aria-pressed="true"] small{color:var(--accent-ink)}
+.planned{font-size:17px}
+.planned b{font-family:var(--f-display);font-size:26px}
+.timer{font-family:var(--f-mono);font-size:68px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-.02em}
+.timer.over{color:var(--bad)}
+.tcard{border:2px solid var(--accent)}
+.tcard.late{border-color:var(--bad)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--panel2);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi b{font-family:var(--f-display);font-size:26px;font-variant-numeric:tabular-nums;line-height:1.05}
+.kpi span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.bar{height:14px;background:var(--panel2);border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:var(--route);border-radius:999px;transition:width .3s}
+.bar.ok i{background:var(--good)}
+details.settings summary{cursor:pointer;font-weight:700;color:var(--muted);font-size:14px}
+.setgrid{display:grid;grid-template-columns:1fr 110px;gap:8px;align-items:center;margin-top:10px}
+.setgrid .inp{padding:8px 10px;font-size:16px}
+nav.tabbar{grid-template-columns:repeat(3,1fr)!important}
+.bigin{font-family:var(--f-display);font-size:44px;text-align:center;padding:10px;font-variant-numeric:tabular-nums}
+.btn.xl{padding:18px;font-size:22px;font-family:var(--f-display);text-transform:uppercase;letter-spacing:.04em;border-radius:14px}
+.btn.xl:disabled{opacity:.45}
+.types button{padding:14px 4px}
+.daysum{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:8px;text-align:left;width:100%}
+.daysum .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;width:100%}
+.daysum b{font-family:var(--f-display);font-size:22px}
+.timer.huge{font-size:clamp(52px,17vw,84px)}
+.tinfo{font-size:18px;text-align:center;font-weight:600}
+.weeknav{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.weeknav button{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--panel);font-size:24px}
+.days{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.days button{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:8px 2px;display:flex;flex-direction:column;align-items:center;font-weight:700;font-size:15px;gap:1px}
+.days button small{font-size:11px;font-weight:600;color:var(--muted)}
+.days button.ok{border-color:var(--good)} .days button.ok small{color:var(--good)}
+.days button.wa{border-color:var(--warn)} .days button.wa small{color:var(--warn)}
+.days button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.days button[aria-pressed="true"] small{color:var(--accent-ink)}
+.tbl{width:100%;border-collapse:collapse;font-size:15px}
+.tbl td{padding:6px 2px;border-top:1px solid var(--line)}
+.tbl td:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.hrow{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.hrow .inp{width:110px;padding:8px 10px;font-size:17px;text-align:right}
+.mchips{display:flex;flex-wrap:wrap;gap:6px}
+.mchip{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px 4px 4px 10px;font-size:14px;font-weight:600}
+.mchip button{border:0;background:var(--panel);width:26px;height:26px;border-radius:50%;color:var(--bad);font-weight:700}
+.addrow{display:grid;grid-template-columns:1fr 1fr auto;gap:6px}
+.addrow .inp{padding:9px 10px;font-size:16px}
+.pill{display:inline-block;padding:6px 12px;border-radius:999px;font-weight:700;font-size:14px;background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad)}
+.pill.ok{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good)}
+details.fold summary{cursor:pointer;font-weight:700;font-size:16px;list-style:none;display:flex;justify-content:space-between}
+details.fold summary::after{content:"+";color:var(--muted);font-size:20px;line-height:1}
+details.fold[open] summary::after{content:"−"}
+details.fold textarea.inp{min-height:90px}
+@media (min-width:900px){.sheet{justify-content:flex-start}.sheet>.card{max-width:400px}.top{justify-content:flex-start}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+<main>
+  <section class="view" id="vPlan" hidden>
+    <div class="mapwrap" id="mapwrap"><canvas id="map" aria-label="Plan de l'entrepôt"></canvas></div>
+    <div class="top">
+      <div class="searchcard" id="searchcard">
+        <div class="srow"><input id="to" autocomplete="off" enterkeyhint="search" placeholder="Où vas-tu ? Emplacement, quai, imprimante…" aria-label="Destination"></div>
+        <div class="fromline"><span class="dot"></span><span>Départ :</span><b id="fromLbl">—</b><span style="flex:1"></span><button class="linkbtn" id="whereBtn">Où suis-je ?</button></div>
+        <ul class="results" id="toRes" hidden></ul>
+      </div>
+    </div>
+    <div class="hint" id="hint" hidden></div>
+    <div class="fab" id="fab">
+      <button id="locBtn" aria-label="Me localiser" title="Me localiser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+      <button id="zin" aria-label="Zoomer">+</button>
+      <button id="zout" aria-label="Dézoomer">−</button>
+      <button id="zfit" aria-label="Voir tout le plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    </div>
+    <div class="sheet" id="sheet"></div>
+  </section>
+
+  <section class="view scroll" id="vProd" hidden>
+    <div class="wrap">
+      <div id="prodStart" class="card">
+        <div class="lbl">Type de mission</div>
+        <div class="types" id="types"></div>
+        <div class="field"><label class="lbl" for="nColis">Nombre de colis</label><input class="inp bigin" id="nColis" type="number" min="1" inputmode="numeric" pattern="[0-9]*" placeholder="0" enterkeyhint="go"></div>
+        <div class="planned" id="planned">&nbsp;</div>
+        <button class="btn primary xl" id="startBtn">Démarrer</button>
+      </div>
+      <div id="timerBox"></div>
+      <button class="daysum" id="daySum"></button>
+    </div>
+  </section>
+
+  <section class="view scroll" id="vProfil" hidden>
+    <div class="wrap">
+      <h1 class="title">Profil</h1>
+      <div class="weeknav"><button id="wPrev" aria-label="Semaine précédente">‹</button><b id="wLbl"></b><button id="wNext" aria-label="Semaine suivante">›</button></div>
+      <div class="days" id="days"></div>
+      <div class="card" id="dayCard"></div>
+      <div class="card" id="weekCard"></div>
+      <div class="card" id="monthCard"></div>
+      <details class="card fold"><summary>Planning de la semaine</summary>
+        <p class="note">Colle ton planning : l'appli lit les horaires et remplit les heures de chaque jour. Tu peux les modifier ensuite jour par jour.</p>
+        <textarea class="inp" id="planTxt" placeholder="Semaine 48&#10;Lundi : 6h00-13h30&#10;Mardi : repos"></textarea>
+        <button class="btn" id="planRead">Lire le planning</button>
+        <div id="planOut"></div>
+      </details>
+      <details class="card fold"><summary>Réglages</summary><div class="setgrid" id="setgrid"></div></details>
+      <details class="card fold"><summary>Repères du plan</summary>
+        <p class="note">Imprimantes, filmeuses, chargeurs… Place-les en touchant le plan, ils deviennent cherchables.</p>
+        <button class="btn primary" id="poiAdd">Ajouter un repère sur le plan</button>
+        <ul class="list" id="poiList"></ul>
+        <div class="btnrow"><button class="btn" id="poiCopy">Copier la liste</button><button class="btn" id="poiImportBtn">Importer</button></div>
+        <div id="poiImport" hidden class="field"><textarea class="inp" id="poiImportTxt" placeholder="Colle ici une liste copiée"></textarea><button class="btn primary" id="poiImportGo">Importer</button></div>
+        <p class="note" id="poiMsg"></p>
+      </details>
+      <details class="card fold"><summary>Sauvegarde</summary>
+        <p class="note">Tes données restent sur ce téléphone. Pour changer de téléphone : Sauvegarder, copie le texte et garde-le, puis colle-le ici et touche Restaurer.</p>
+        <textarea class="inp" id="bkTxt" rows="3"></textarea>
+        <div class="btnrow"><button class="btn" id="bkOut">Sauvegarder</button><button class="btn" id="bkIn">Restaurer</button></div>
+        <p class="note" id="bkMsg"></p>
+      </details>
+      <p class="note">Calculs repris de l'outil Quota colis.</p>
+    </div>
+  </section>
+</main>
+<nav class="tabbar" role="tablist">
+  <button role="tab" data-v="Prod" aria-selected="true"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg></span>Prod</button>
+  <button role="tab" data-v="Plan" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg></span>Plan</button>
+  <button role="tab" data-v="Profil" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></span>Profil</button>
+</nav>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s);
+const store={get(k,d){try{const v=localStorage.getItem('gp2_'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('gp2_'+k,JSON.stringify(v))}catch(e){}}};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const strip=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
+const CELL_M=1, SPEED=1.1;
+
+let curView='Prod',needFit=true;
+function show(v){curView=v;document.querySelectorAll('nav.tabbar button').forEach(b=>b.setAttribute('aria-selected',b.dataset.v===v));for(const k of['Prod','Plan','Profil'])$('#v'+k).hidden=k!==v;if(v==='Plan')requestAnimationFrame(()=>{resize();if(needFit&&base&&vw){needFit=false;if(state.route)fitCells(state.route.cells,[state.from,state.to]);else fitAll()}});if(v==='Prod')renderProd();if(v==='Profil')renderProfil();store.set('tab3',v)}
+document.querySelectorAll('nav.tabbar button').forEach(b=>b.onclick=()=>show(b.dataset.v));
+
+let W,H,G,REACH,LOCS=[],LOC_AT,AISLES=new Map(),ZONES=new Map(),QUAIS=[],START0;
+const POI_TYPES={imprimante:'Imprimante',filmeuse:'Filmeuse',chargeur:'Chargeur',bureau:'Bureau chef d\'équipe',pause:'Salle de pause',vestiaire:'Vestiaires / WC',dechets:'Déchets / cartons',autre:'Autre'};
+let POIS=store.get('pois',[]);
+async function load(){
+  const d=await (await fetch('entrepot.json')).json();
+  W=d.w;H=d.h;G=new Uint8Array(W*H);
+  const map={'.':0,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'0':8};
+  d.grid.forEach((row,y)=>{for(let x=0;x<W;x++)G[y*W+x]=map[row[x]]??0});
+  START0=d.start;
+  // 7 itinéraire chariot, 3 passage piéton, 4 picking avec passage piéton, 6 zone de départ : praticables. 5 zone inaccessible : bloquée.
+  const walk=c=>c===0||c===3||c===4||c===6||c===7;
+  REACH=new Uint8Array(W*H);const q=[START0[1]*W+START0[0]];REACH[q[0]]=1;
+  while(q.length){const i=q.pop(),x=i%W,y=(i/W)|0;for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const a=x+dx,b=y+dy;if(a<0||b<0||a>=W||b>=H)continue;const j=b*W+a;if(!REACH[j]&&walk(G[j])){REACH[j]=1;q.push(j)}}}
+  LOC_AT=new Int32Array(W*H).fill(-1);
+  d.locs.forEach((l,i)=>{const[id,x,y,dyn]=l;const p=id.split('-');const o={id,x,y,dyn:!!dyn,zone:p[0],aisle:p[0]+'-'+p[1],pos:p[2],n:id.replace(/[^A-Z0-9]/g,'')};LOCS.push(o);LOC_AT[y*W+x]=i;
+    let a=AISLES.get(o.aisle);if(!a){a={id:o.aisle,minx:1e9,miny:1e9,maxx:-1,maxy:-1,locs:[]};AISLES.set(o.aisle,a)}a.locs.push(o);a.minx=Math.min(a.minx,x);a.maxx=Math.max(a.maxx,x);a.miny=Math.min(a.miny,y);a.maxy=Math.max(a.maxy,y);
+    let z=ZONES.get(o.zone);if(!z){z={sx:0,sy:0,n:0};ZONES.set(o.zone,z)}z.sx+=x;z.sy+=y;z.n++;});
+  QUAIS=d.quais.map(([id,x,y])=>({id,num:parseInt(id,10),x,y}));
+}
+
+class Heap{constructor(){this.k=[];this.v=[]}push(k,v){const K=this.k,V=this.v;let i=K.length;K.push(k);V.push(v);while(i>0){const p=(i-1)>>1;if(K[p]<=k)break;K[i]=K[p];V[i]=V[p];i=p}K[i]=k;V[i]=v}
+pop(){const K=this.k,V=this.v,top=V[0],lk=K.pop(),lv=V.pop(),n=K.length;if(n){let i=0;while(true){let l=2*i+1,r=l+1,m=i,mk=lk;if(l<n&&K[l]<mk){m=l;mk=K[l]}if(r<n&&K[r]<mk){m=r;mk=K[r]}if(m===i)break;K[i]=K[m];V[i]=V[m];i=m}K[i]=lk;V[i]=lv}return top}get size(){return this.k.length}}
+const DIRS=[[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,Math.SQRT2],[1,-1,Math.SQRT2],[-1,1,Math.SQRT2],[-1,-1,Math.SQRT2]];
+function dijkstra(src,goals){const dist=new Float32Array(W*H).fill(Infinity),prev=new Int32Array(W*H).fill(-1),h=new Heap();dist[src]=0;h.push(0,src);let hit=-1;
+  while(h.size){const i=h.pop();if(goals&&goals.has(i)){hit=i;break}const di=dist[i],x=i%W,y=(i/W)|0;
+    for(const[dx,dy,c]of DIRS){const a=x+dx,b=y+dy;if(a<0||b<0||a>=W||b>=H)continue;const j=b*W+a;if(!REACH[j])continue;if(dx&&dy&&(!REACH[y*W+a]||!REACH[b*W+x]))continue;const nd=di+c;if(nd<dist[j]){dist[j]=nd;prev[j]=i;h.push(nd,j)}}}
+  return{dist,prev,hit}}
+function goalsAround(x,y){const s=new Set();if(x>=0&&y>=0&&x<W&&y<H&&REACH[y*W+x]){s.add(y*W+x);return s}
+  for(let r=1;r<=4&&!s.size;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;if(r===1&&dx&&dy)continue;const a=x+dx,b=y+dy;if(a<0||b<0||a>=W||b>=H)continue;if(REACH[b*W+a])s.add(b*W+a)}
+  if(!s.size)for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const a=x+dx,b=y+dy;if(a>=0&&b>=0&&a<W&&b<H&&REACH[b*W+a])s.add(b*W+a)}return s}
+function goalsOf(t){if(t.goals)return t.goals;let s;if(t.kind==='aisle'){s=new Set();for(const l of AISLES.get(t.ref).locs)for(const g of goalsAround(l.x,l.y))s.add(g)}else s=goalsAround(t.x,t.y);t.goals=s;return s}
+function cellOf(t){if(REACH[t.y*W+t.x])return t.y*W+t.x;let best=-1,bd=1e9;for(const j of goalsOf(t)){const d=Math.hypot(j%W-t.x,((j/W)|0)-t.y);if(d<bd){bd=d;best=j}}return best}
+function route(a,b){const src=cellOf(a);if(src<0)return null;const goals=goalsOf(b);if(goals.has(src))return{cells:[src],len:0};const{dist,prev,hit}=dijkstra(src,goals);if(hit<0)return null;const cells=[];for(let i=hit;i>=0;i=prev[i])cells.push(i);cells.reverse();return{cells,len:dist[hit]}}
+function simplify(c){if(c.length<3)return c.slice();const o=[c[0]];for(let k=1;k<c.length-1;k++){const a=c[k-1],b=c[k],d=c[k+1];if(b-a!==d-b)o.push(b)}o.push(c[c.length-1]);return o}
+
+const T={
+  loc:o=>({kind:'loc',label:o.id,sub:'Allée '+o.aisle+(o.dyn?' · dynamique':''),x:o.x,y:o.y,ref:o.id,dyn:o.dyn}),
+  aisle:a=>({kind:'aisle',label:'Allée '+a.id,sub:a.locs.length+' emplacements',x:Math.round((a.minx+a.maxx)/2),y:a.maxy,ref:a.id}),
+  quai:q=>({kind:'quai',label:'Quai '+q.id,sub:'Quai de chargement',x:q.x,y:q.y,ref:q.id}),
+  poi:p=>({kind:'poi',label:p.name,sub:POI_TYPES[p.type]||'Repère',x:p.x,y:p.y,ref:p.id}),
+  start:()=>({kind:'start',label:'Zone de départ préparation',sub:'Point de départ',x:START0[0],y:START0[1]}),
+  cell:(x,y,label)=>({kind:'cell',label:label||'Point choisi sur le plan',sub:'',x,y})
+};
+const BADGE={loc:'Empl.',aisle:'Allée',quai:'Quai',poi:'Repère',cell:'Point',start:'Départ'};
+function search(qRaw,max=8){
+  const q=strip(qRaw.trim());if(!q)return[];const res=[];const qn=q.replace(/[^A-Z0-9]/g,'');
+  if(/^DEP/.test(q)||q.startsWith('ZONE DE D'))res.push(T.start());
+  const mq=q.match(/^(?:Q|QUAI)\s*0*(\d{1,3})$/)||(/^\d{1,3}$/.test(q)&&q.match(/^0*(\d{1,3})$/));
+  if(mq){const n=parseInt(mq[1],10);[...QUAIS.filter(x=>x.num===n),...QUAIS.filter(x=>x.num!==n&&String(x.num).startsWith(String(n)))].slice(0,5).forEach(x=>res.push(T.quai(x)))}
+  let key=qn;const m=q.match(/^([A-Z])\W*(\d{1,2})(?:\W+(\d{1,3}))?\W*$/);
+  if(m)key=m[1]+m[2].padStart(2,'0')+(m[3]!==undefined?m[3].padStart(3,'0'):'');
+  if(/^[A-Z]\d/.test(key)||/^[A-Z]$/.test(key)){
+    if(key.length<=3)for(const a of AISLES.values())if(a.id.replace('-','').startsWith(key)){res.push(T.aisle(a));if(res.length>=max)break}
+    if(key.length>=3){let n=0;for(const o of LOCS)if(o.n.startsWith(key)){res.push(T.loc(o));if(++n>=max)break}}
+  }
+  for(const p of POIS)if(strip(p.name).includes(q)||strip(POI_TYPES[p.type]||'').includes(q))res.push(T.poi(p));
+  return res.slice(0,max);
+}
+const parseOne=s=>search(s,1)[0]||null;
+
+const cv=$('#map'),ctx=cv.getContext('2d');let base=null,dpr=1,vw=0,vh=0;
+const view={s:3,x:0,y:0};let colors={};
+function readColors(){const cs=getComputedStyle(document.documentElement);for(const k of['floor','rack','wall','quai','poi','sel','route','route-case','fg','muted','panel','bad','accent','bg','me'])colors[k]=cs.getPropertyValue('--'+k).trim()}
+function buildBase(){readColors();base=document.createElement('canvas');base.width=W;base.height=H;const b=base.getContext('2d');const img=b.createImageData(W,H);
+  const hex=h=>{const c=document.createElement('canvas').getContext('2d');c.fillStyle=h;c.fillRect(0,0,1,1);return c.getImageData(0,0,1,1).data};
+  const fl=hex(colors.floor),rk=hex(colors.rack),wl=hex(colors.wall),out=hex(colors.bg);
+  // Visuel épuré : seuls les racks (1, et 4 affiché comme un rack) et les murs (2) sont dessinés.
+  for(let i=0;i<W*H;i++){const c=G[i];const p=c===1||c===4?rk:c===2?wl:(REACH[i]||c===5)?fl:out;img.data.set([p[0],p[1],p[2],255],i*4)}
+  b.putImageData(img,0,0);for(const q of QUAIS){b.fillStyle=colors.quai;b.fillRect(q.x,q.y,1,1)}}
+function resize(){const r=cv.getBoundingClientRect();if(!r.width)return;dpr=window.devicePixelRatio||1;vw=r.width;vh=r.height;cv.width=Math.round(vw*dpr);cv.height=Math.round(vh*dpr);draw()}
+let raf=0;function draw(){if(!raf)raf=requestAnimationFrame(render)}
+const sx=x=>(x-view.x)*view.s, sy=y=>(y-view.y)*view.s;
+function render(){raf=0;if(!base)return;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle=colors.bg;ctx.fillRect(0,0,vw,vh);
+  ctx.imageSmoothingEnabled=false;ctx.drawImage(base,sx(0),sy(0),W*view.s,H*view.s);const s=view.s;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  if(s<5){ctx.font=`700 ${Math.max(18,s*9)}px "Barlow Condensed",sans-serif`;for(const[z,o]of ZONES){const x=sx(o.sx/o.n+.5),y=sy(o.sy/o.n+.5);ctx.lineWidth=4;ctx.strokeStyle=colors.floor;ctx.strokeText(z,x,y);ctx.fillStyle=colors.fg;ctx.fillText(z,x,y)}}
+  else{ctx.font=`700 ${Math.min(16,s*1.6)}px "Barlow Condensed",sans-serif`;for(const a of AISLES.values()){const x=sx((a.minx+a.maxx)/2+.5),y=sy(a.maxy+1.6);if(x<-40||x>vw+40||y<-20||y>vh+20)continue;ctx.lineWidth=3;ctx.strokeStyle=colors.floor;ctx.strokeText(a.id,x,y);ctx.fillStyle=colors.fg;ctx.fillText(a.id,x,y)}}
+  if(s>=16){ctx.font=`600 ${Math.min(11,s*.38)}px "IBM Plex Mono",monospace`;ctx.fillStyle=colors.fg;const x0=Math.max(0,Math.floor(view.x)),y0=Math.max(0,Math.floor(view.y)),x1=Math.min(W,Math.ceil(view.x+vw/s)),y1=Math.min(H,Math.ceil(view.y+vh/s));
+    for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const li=LOC_AT[y*W+x];if(li>=0)ctx.fillText(LOCS[li].pos,sx(x+.5),sy(y+.5))}}
+  if(s>=7){ctx.font=`700 ${Math.min(12,s*.5)}px "Barlow",sans-serif`;ctx.fillStyle=colors.quai;for(const q of QUAIS){const x=sx(q.x+.5),y=sy(q.y+.5);if(x<-20||x>vw+20||y<-20||y>vh+20)continue;ctx.fillText(q.id,x+(q.x>=W-2?-s*1.6:0),y+(q.x>=W-2?0:(q.y>100?s*1.2:-s*1.2)))}}
+  for(const p of POIS)pin(p.x,p.y,colors.poi,(POI_TYPES[p.type]||'?')[0]);
+  const paths=tour?tour.legs.map((l,i)=>({cells:l.cells,dim:i!==tour.cur})):(state.route?[{cells:state.route.cells}]:[]);
+  for(const p of paths){if(p.cells.length<2)continue;const pts=simplify(p.cells);ctx.lineJoin='round';ctx.lineCap='round';ctx.beginPath();pts.forEach((c,k)=>{const x=sx(c%W+.5),y=sy(((c/W)|0)+.5);k?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+    ctx.globalAlpha=p.dim?.3:1;ctx.strokeStyle=colors['route-case'];ctx.lineWidth=Math.max(5,s*.9)+3;ctx.stroke();ctx.strokeStyle=colors.route;ctx.lineWidth=Math.max(4,s*.9);ctx.stroke();ctx.globalAlpha=1}
+  if(state.sel){ctx.strokeStyle=colors.sel;ctx.lineWidth=3;const r=Math.max(9,s*1.2);ctx.strokeRect(sx(state.sel.x+.5)-r,sy(state.sel.y+.5)-r,2*r,2*r)}
+  if(tour){tour.stops.forEach((st,i)=>numPin(st.t.x,st.t.y,i+1,st.done,i===tour.cur));if(tour.end)pin(tour.end.x,tour.end.y,colors.bad,'F')}
+  else if(state.to)pin(state.to.x,state.to.y,colors.bad,'');
+  const f=tour?tour.from:state.from;if(f){const x=sx(f.x+.5),y=sy(f.y+.5);ctx.beginPath();ctx.arc(x,y,9,0,7);ctx.fillStyle=colors.panel;ctx.fill();ctx.lineWidth=4;ctx.strokeStyle=colors.route;ctx.stroke()}
+  if(geo.pos){const x=sx(geo.pos.x+.5),y=sy(geo.pos.y+.5);ctx.beginPath();ctx.arc(x,y,Math.max(10,geo.pos.acc*s),0,7);ctx.globalAlpha=.15;ctx.fillStyle=colors.me;ctx.fill();ctx.globalAlpha=1;ctx.beginPath();ctx.arc(x,y,7,0,7);ctx.fillStyle=colors.me;ctx.fill();ctx.lineWidth=3;ctx.strokeStyle='#fff';ctx.stroke()}
+}
+function pin(cx,cy,col,letter){const x=sx(cx+.5),y=sy(cy+.5);ctx.save();ctx.translate(x,y);ctx.beginPath();ctx.moveTo(0,0);ctx.bezierCurveTo(-4,-8,-12,-13,-12,-22);ctx.arc(0,-22,12,Math.PI,0);ctx.bezierCurveTo(12,-13,4,-8,0,0);ctx.fillStyle=col;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=colors.panel;ctx.stroke();
+  ctx.fillStyle='#fff';if(letter){ctx.font='700 13px "Barlow",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(letter,0,-22)}else{ctx.beginPath();ctx.arc(0,-22,4.5,0,7);ctx.fill()}ctx.restore()}
+function numPin(cx,cy,n,done,cur){const x=sx(cx+.5),y=sy(cy+.5),r=cur?13:10;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fillStyle=done?colors.muted:cur?colors.accent:colors.route;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=colors.panel;ctx.stroke();ctx.fillStyle=cur?'#1d1600':'#fff';ctx.font=`700 ${cur?13:11}px "Barlow",sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(n,x,y+.5)}
+
+function clampView(){const mw=vw/view.s,mh=vh/view.s;view.x=Math.min(Math.max(view.x,-mw*.6),W-mw*.4);view.y=Math.min(Math.max(view.y,-mh*.6),H-mh*.4)}
+function zoomAt(f,px,py){const ns=Math.min(48,Math.max(.8,view.s*f));const cx=view.x+px/view.s,cy=view.y+py/view.s;view.s=ns;view.x=cx-px/ns;view.y=cy-py/ns;clampView();draw()}
+function safeArea(){const c0=cv.getBoundingClientRect().top;const top=$('#searchcard').getBoundingClientRect().bottom-c0+10;const sh=$('#sheet .card');const bot=sh?sh.getBoundingClientRect().height+20:20;return{top,bot}}
+function fit(x0,y0,x1,y1,maxS=12){const{top,bot}=safeArea();const pad=24,avH=Math.max(80,vh-top-bot),w=x1-x0+1,h=y1-y0+1;view.s=Math.min(maxS,Math.max(.8,Math.min((vw-pad*2)/w,(avH-pad)/h)));view.x=(x0+x1+1)/2-vw/view.s/2;view.y=(y0+y1+1)/2-(top+avH/2)/view.s;draw()}
+const fitAll=()=>fit(0,0,W-1,H-1,20);
+function fitCells(cells,extra=[]){let x0=1e9,y0=1e9,x1=-1,y1=-1;const add=(x,y)=>{x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)};cells.forEach(c=>add(c%W,(c/W)|0));extra.forEach(t=>t&&add(t.x,t.y));if(x1>=0)fit(x0,y0,x1,y1,10)}
+$('#zin').onclick=()=>zoomAt(1.6,vw/2,vh/2);$('#zout').onclick=()=>zoomAt(1/1.6,vw/2,vh/2);$('#zfit').onclick=fitAll;
+cv.addEventListener('wheel',e=>{e.preventDefault();const r=cv.getBoundingClientRect();zoomAt(Math.exp(-e.deltaY*.0015),e.clientX-r.left,e.clientY-r.top)},{passive:false});
+const ptrs=new Map();let drag=null,moved=0,pinch=null;
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});if(ptrs.size===1){moved=0;drag={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y}}if(ptrs.size===2){const[a,b]=[...ptrs.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),s:view.s};moved=99}$('#to').blur()});
+cv.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2&&pinch){const[a,b]=[...ptrs.values()];const r=cv.getBoundingClientRect();zoomAt(pinch.s*Math.hypot(a.x-b.x,a.y-b.y)/pinch.d/view.s,(a.x+b.x)/2-r.left,(a.y+b.y)/2-r.top);return}
+  if(drag&&ptrs.size===1){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;moved=Math.max(moved,Math.abs(dx)+Math.abs(dy));if(moved>6){view.x=drag.vx-dx/view.s;view.y=drag.vy-dy/view.s;clampView();draw()}}});
+const up=e=>{const was=ptrs.has(e.pointerId);ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;if(ptrs.size===1){const[p]=[...ptrs.values()];drag={x:p.x,y:p.y,vx:view.x,vy:view.y}}
+  if(was&&ptrs.size===0&&moved<=6&&e.type==='pointerup'){const r=cv.getBoundingClientRect();onMapTap(Math.floor(view.x+(e.clientX-r.left)/view.s),Math.floor(view.y+(e.clientY-r.top)/view.s))}if(ptrs.size===0)drag=null};
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+
+const state={from:null,to:null,route:null,sel:null,pick:null,sheet:null};
+let tour=null;
+function setHint(t){$('#hint').hidden=!t;$('#hint').textContent=t||''}
+function onMapTap(x,y){if(x<0||y<0||x>=W||y>=H)return;
+  if(state.pick==='from'){const t=targetAt(x,y)||T.cell(x,y);state.pick=null;setHint('');state.sheet=null;setFrom(t,true);return}
+  if(state.pick==='poi'){state.pick=null;setHint('');openPoiSheet(x,y);return}
+  if(tour)return;
+  const t=targetAt(x,y);state.sel=t;state.sheet=t?'sel':null;renderSheet();draw()}
+function targetAt(x,y){for(let r=0;r<=1;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){const a=x+dx,b=y+dy;if(a<0||b<0||a>=W||b>=H)continue;const li=LOC_AT[b*W+a];if(li>=0)return T.loc(LOCS[li]);const p=POIS.find(p=>p.x===a&&p.y===b);if(p)return T.poi(p);const q=QUAIS.find(q=>q.x===a&&q.y===b);if(q)return T.quai(q)}return null}
+function setFrom(t,byUser){state.from=t;$('#fromLbl').textContent=t.label;store.set('from',{kind:t.kind,ref:t.ref,x:t.x,y:t.y,label:t.label});if(byUser)geo.onManual(t);computeRoute()}
+function setTo(t){state.to=t;$('#to').value=t?t.label:'';state.sel=null;state.sheet=null;computeRoute(true)}
+function computeRoute(fitIt){state.route=null;if(state.from&&state.to&&!tour)state.route=route(state.from,state.to);renderSheet();if(fitIt&&state.route)requestAnimationFrame(()=>fitCells(state.route.cells,[state.from,state.to]));draw()}
+function fmtTime(m){const sec=Math.round(m*CELL_M/SPEED);if(sec<60)return Math.max(5,Math.round(sec/5)*5)+' s';return Math.round(sec/60)+' min'}
+function details(t){if(t.kind!=='loc')return'';const[z,a,p]=t.ref.split('-');return`<span class="chip">Zone ${esc(z)}</span><span class="chip">Allée ${esc(z+'-'+a)}</span><span class="chip">Position ${esc(p)}</span>${t.dyn?'<span class="chip dyn">Dynamique</span>':''}`}
+
+function renderSheet(){const el=$('#sheet');let h='';
+  if(state.sheet==='where'){h=`<div class="card"><div class="lbl">Où suis-je ?</div><div class="field"><input class="inp" id="whereIn" autocomplete="off" placeholder="Emplacement devant toi, ex. B-07-012"><ul class="results" id="whereRes" hidden></ul></div>
+    <div class="btnrow"><button class="btn blue" id="whereGps">Utiliser le GPS</button><button class="btn" id="whereTap">Toucher le plan</button></div><div class="btnrow"><button class="btn" id="whereStart">Zone de départ</button><button class="btn" id="whereClose">Fermer</button></div><p class="note" id="whereMsg">${esc(geo.status())}</p></div>`}
+  else if(state.sheet==='poi'){h=poiSheetHtml}
+  else if(tour){const st=tour.stops[tour.cur];const done=tour.stops.filter(s=>s.done).length;const leg=tour.legs[tour.cur];
+    if(st)h=`<div class="card"><div class="lbl">Tournée · arrêt ${tour.cur+1} sur ${tour.stops.length}</div><div class="rhead"><span class="big code" style="font-size:30px">${esc(st.t.label)}</span><span class="small">${leg?fmtTime(leg.len)+' · '+Math.round(leg.len)+' m':''}</span></div><div class="chips">${details(st.t)}</div><div class="btnrow"><button class="btn primary" id="stopDone">Pris, arrêt suivant</button></div><div class="btnrow"><button class="btn" id="tourList">Liste (${done}/${tour.stops.length})</button><button class="btn" id="tourQuit">Arrêter</button></div><div id="tourListBox" hidden></div></div>`;
+    else h=`<div class="card"><div class="lbl">Tournée terminée</div><div class="rhead"><span class="big">${tour.stops.length} arrêts faits</span></div>${tour.end?`<div class="small">Dernier trajet vers <b>${esc(tour.end.label)}</b> affiché.</div>`:''}<div class="btnrow"><button class="btn primary" id="tourQuit">Fermer la tournée</button></div></div>`}
+  else if(state.sheet==='sel'&&state.sel){const t=state.sel;h=`<div class="card"><div><span class="badge ${t.kind}">${BADGE[t.kind]}</span> <span class="code" style="font-size:18px">${esc(t.label)}</span></div><div class="chips">${details(t)}</div><div class="btnrow"><button class="btn primary" id="selTo">Y aller</button><button class="btn" id="selFrom">Je suis ici</button></div></div>`}
+  else if(state.to){const r=state.route;h=r?`<div class="card"><div class="rhead"><span class="big">${fmtTime(r.len)}</span><span class="small">${Math.round(r.len*CELL_M)} m à pied</span></div><div><span class="badge ${state.to.kind}">${BADGE[state.to.kind]}</span> <span class="code" style="font-size:18px">${esc(state.to.label)}</span></div><div class="chips">${details(state.to)}</div><div class="btnrow"><button class="btn primary" id="arrived">Je suis arrivé</button><button class="btn" id="routeClose" style="flex:0 0 auto">Fermer</button></div></div>`:`<div class="card"><b>Pas d'itinéraire trouvé.</b><span class="small">Indique où tu es avec « Où suis-je ? ».</span></div>`}
+  el.innerHTML=h;wireSheet();requestAnimationFrame(()=>{const c=$('#sheet .card');$('#fab').style.bottom=(c?c.getBoundingClientRect().height+20:12)+'px'})}
+function wireSheet(){const on=(id,f)=>{const b=document.getElementById(id);if(b)b.onclick=f};
+  on('arrived',()=>{const t=state.to;state.to=null;$('#to').value='';state.sheet=null;setFrom(t,true)});
+  on('routeClose',()=>{state.to=null;$('#to').value='';state.sheet=null;computeRoute()});
+  on('selTo',()=>setTo(state.sel));on('selFrom',()=>{const t=state.sel;state.sel=null;state.sheet=null;setFrom(t,true)});
+  on('stopDone',()=>{tour.stops[tour.cur].done=true;tour.cur=tour.stops.findIndex(s=>!s.done);if(tour.cur<0)tour.cur=tour.stops.length;renderSheet();const leg=tour.legs[tour.cur];if(leg&&leg.cells.length)requestAnimationFrame(()=>fitCells(leg.cells));draw()});
+  on('tourQuit',()=>{const last=tour.stops.filter(s=>s.done).pop();tour=null;state.sheet=null;if(last)setFrom(last.t,false);else{renderSheet();draw()}});
+  on('tourList',()=>{const b=$('#tourListBox');b.hidden=!b.hidden;if(b.hidden)return;b.innerHTML=`<ol class="stops">${tour.stops.map((s,i)=>`<li class="${s.done?'done':''} ${i===tour.cur?'cur':''}"><span class="n">${i+1}</span><span class="grow code">${esc(s.t.label)}</span><button class="linkbtn" data-i="${i}">${s.done?'Annuler':'Fait'}</button></li>`).join('')}</ol>`;
+    b.querySelectorAll('[data-i]').forEach(x=>x.onclick=()=>{const i=+x.dataset.i;tour.stops[i].done=!tour.stops[i].done;tour.cur=tour.stops.findIndex(s=>!s.done);if(tour.cur<0)tour.cur=tour.stops.length;renderSheet();const tl=$('#tourList');if(tl)tl.click();draw()})});
+  on('whereGps',()=>geo.locate());on('whereTap',()=>{state.pick='from';state.sheet=null;renderSheet();setHint('Touche l\'endroit où tu es')});
+  on('whereStart',()=>{state.sheet=null;setFrom(T.start(),false)});on('whereClose',()=>{state.sheet=null;renderSheet()});
+  if($('#whereIn'))auto($('#whereIn'),$('#whereRes'),t=>{state.sheet=null;setFrom(t,true)});
+  on('poiSave',savePoiFromSheet);on('poiCancel',()=>{state.sheet=null;state.sel=null;renderSheet();draw()});
+  if($('#poiType')){const sync=()=>{if(!$('#poiName').dataset.t)$('#poiName').value=POI_TYPES[$('#poiType').value]};sync();$('#poiType').onchange=sync;$('#poiName').oninput=()=>$('#poiName').dataset.t=1}
+}
+
+function auto(inp,list,onPick){let items=[],idx=-1;
+  const showL=()=>{list.innerHTML=items.map((t,i)=>`<li data-i="${i}" aria-selected="${i===idx}"><span class="badge ${t.kind}">${BADGE[t.kind]}</span><span style="min-width:0"><span class="code">${esc(t.label)}</span><br><span class="small">${esc(t.sub||'')}</span></span></li>`).join('');list.hidden=!items.length};
+  inp.addEventListener('input',()=>{items=search(inp.value);idx=items.length?0:-1;showL()});
+  inp.addEventListener('focus',()=>{if(inp.value){inp.select();items=search(inp.value);idx=0;showL()}});
+  inp.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){idx=Math.min(items.length-1,idx+1);showL();e.preventDefault()}else if(e.key==='ArrowUp'){idx=Math.max(0,idx-1);showL();e.preventDefault()}else if(e.key==='Enter'){if(items[idx])pick(items[idx]);e.preventDefault()}else if(e.key==='Escape')list.hidden=true});
+  inp.addEventListener('blur',()=>setTimeout(()=>list.hidden=true,180));
+  list.addEventListener('pointerdown',e=>{const li=e.target.closest('li');if(li){e.preventDefault();pick(items[+li.dataset.i])}});
+  function pick(t){list.hidden=true;inp.blur();onPick(t)}}
+auto($('#to'),$('#toRes'),t=>{tour=null;setTo(t)});
+$('#whereBtn').onclick=()=>{state.sheet='where';renderSheet();setTimeout(()=>{const w=$('#whereIn');if(w)w.focus()},60)};
+
+/* Géolocalisation : le GPS donne latitude/longitude. Pour la placer sur le plan, l'appli apprend
+   la correspondance à chaque fois que tu indiques où tu es pendant que le GPS répond.
+   Dès 2 points éloignés, ta position GPS s'affiche en direct (point bleu). */
+const geo={pos:null,last:null,watch:null,calib:store.get('calib',[]),msg:'',model:null,
+  status(){if(this.msg)return this.msg;return this.calib.length>=2?'GPS calé sur le plan ('+this.calib.length+' points).':'Le plus fiable : tape l\'emplacement devant toi. Le GPS se cale tout seul au fil de tes positions.'},
+  setMsg(m){this.msg=m;const e=$('#whereMsg');if(e)e.textContent=m},
+  locate(){if(!navigator.geolocation){this.setMsg('Le GPS n\'est pas disponible sur cet appareil. Tape l\'emplacement devant toi.');return}
+    this.setMsg('Recherche du signal GPS…');$('#locBtn').classList.add('on');
+    if(this.watch==null)try{this.watch=navigator.geolocation.watchPosition(p=>this.onPos(p),e=>this.onErr(e),{enableHighAccuracy:true,maximumAge:3000,timeout:15000})}catch(e){this.onErr(e)}},
+  stop(){try{if(this.watch!=null)navigator.geolocation.clearWatch(this.watch)}catch(e){}this.watch=null;this.pos=null;$('#locBtn').classList.remove('on');draw()},
+  onErr(e){this.stop();this.setMsg(e&&e.code===1?'Position refusée sur cette page. Tape l\'emplacement devant toi.':'Pas de signal GPS ici (fréquent en intérieur). Tape l\'emplacement devant toi.')},
+  onPos(p){this.last={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy,t:Date.now()};const xy=this.toPlan(this.last);
+    if(xy){this.pos={x:xy[0],y:xy[1],acc:this.last.acc};this.setMsg('Position GPS à ±'+Math.round(this.last.acc)+' m.');const c=goalsAround(Math.round(xy[0]),Math.round(xy[1]));if(c.size&&!state.pick){const j=[...c][0];state.from=T.cell(j%W,(j/W)|0,'Ma position GPS');$('#fromLbl').textContent='Ma position GPS (±'+Math.round(this.last.acc)+' m)';if(!tour)computeRoute()}draw()}
+    else this.setMsg('GPS reçu (±'+Math.round(this.last.acc)+' m) mais pas encore calé sur le plan. Indique où tu es pour le caler.')},
+  onManual(t){if(!this.last||Date.now()-this.last.t>20000||this.last.acc>30)return;this.calib=this.calib.filter(c=>Math.hypot(c.x-t.x,c.y-t.y)>8);this.calib.push({lat:this.last.lat,lon:this.last.lon,x:t.x,y:t.y});this.calib=this.calib.slice(-12);store.set('calib',this.calib);this.model=null},
+  fitModel(){const c=this.calib;if(c.length<2)return null;const lat0=c[0].lat,lon0=c[0].lon,k=Math.cos(lat0*Math.PI/180);
+    const w=c.map(p=>[(p.lon-lon0)*k*111320,(p.lat-lat0)*110540]),z=c.map(p=>[p.x,p.y]);const n=c.length;
+    const wm=[w.reduce((s,a)=>s+a[0],0)/n,w.reduce((s,a)=>s+a[1],0)/n],zm=[z.reduce((s,a)=>s+a[0],0)/n,z.reduce((s,a)=>s+a[1],0)/n];
+    let nr=0,ni=0,d=0,spread=0;for(let i=0;i<n;i++){const wr=w[i][0]-wm[0],wi=w[i][1]-wm[1],zr=z[i][0]-zm[0],zi=z[i][1]-zm[1];nr+=zr*wr+zi*wi;ni+=zi*wr-zr*wi;d+=wr*wr+wi*wi;spread=Math.max(spread,Math.hypot(zr,zi))}
+    if(d<1||spread<7)return null;return{lat0,lon0,k,a:[nr/d,ni/d],wm,zm}},
+  toPlan(g){if(!this.model)this.model=this.fitModel();const m=this.model;if(!m)return null;const wr=(g.lon-m.lon0)*m.k*111320-m.wm[0],wi=(g.lat-m.lat0)*110540-m.wm[1];return[m.a[0]*wr-m.a[1]*wi+m.zm[0],m.a[0]*wi+m.a[1]*wr+m.zm[1]]}
+};
+$('#locBtn').onclick=()=>{if(geo.watch!=null){geo.stop();return}state.sheet='where';renderSheet();geo.locate()};
+
+
+let poiSheetHtml='',poiXY=null;
+function savePois(){store.set('pois',POIS);renderPois();draw()}
+function renderPois(){$('#poiList').innerHTML=POIS.length?POIS.map(p=>`<li><span class="badge poi">${esc((POI_TYPES[p.type]||'Repère').split(' ')[0])}</span><span class="grow">${esc(p.name)}</span><button class="linkbtn" data-go="${esc(p.id)}">Y aller</button><button class="linkbtn" style="color:var(--bad)" data-del="${esc(p.id)}">Suppr.</button></li>`).join(''):'<li class="small">Aucun repère pour l\'instant.</li>';
+  $('#poiList').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{POIS=POIS.filter(p=>p.id!==b.dataset.del);savePois()});
+  $('#poiList').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const p=POIS.find(p=>p.id===b.dataset.go);tour=null;show('Plan');setTo(T.poi(p))})}
+$('#poiAdd').onclick=()=>{show('Plan');tour=null;state.sheet=null;renderSheet();state.pick='poi';setHint('Touche le plan à l\'endroit du repère')};
+function openPoiSheet(x,y){poiXY=[x,y];state.sel={x,y};poiSheetHtml=`<div class="card"><div class="lbl">Nouveau repère</div><select class="inp" id="poiType">${Object.entries(POI_TYPES).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join('')}</select><input class="inp" id="poiName" placeholder="Nom, ex. Imprimante zone C"><div class="btnrow"><button class="btn primary" id="poiSave">Enregistrer</button><button class="btn" id="poiCancel">Annuler</button></div></div>`;state.sheet='poi';renderSheet();draw()}
+function savePoiFromSheet(){const[x,y]=poiXY;POIS.push({id:'p'+Date.now().toString(36),type:$('#poiType').value,name:$('#poiName').value.trim()||POI_TYPES[$('#poiType').value],x,y});state.sheet=null;state.sel=null;savePois();renderSheet()}
+$('#poiCopy').onclick=async()=>{const txt=JSON.stringify(POIS.map(({type,name,x,y})=>({type,name,x,y})));try{await navigator.clipboard.writeText(txt);$('#poiMsg').textContent='Liste copiée. Envoie-la pour l\'ajouter au plan de tout le monde.'}catch(e){$('#poiImport').hidden=false;$('#poiImportTxt').value=txt;$('#poiImportTxt').select();$('#poiMsg').textContent='Copie automatique impossible : le texte est sélectionné ci-dessus.'}};
+$('#poiImportBtn').onclick=()=>{$('#poiImport').hidden=!$('#poiImport').hidden};
+$('#poiImportGo').onclick=()=>{try{const a=JSON.parse($('#poiImportTxt').value);let n=0;for(const p of a)if(Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.name){POIS.push({id:'p'+Date.now().toString(36)+n,type:POI_TYPES[p.type]?p.type:'autre',name:String(p.name),x:p.x|0,y:p.y|0});n++}savePois();$('#poiMsg').textContent=n+' repère(s) importé(s).';$('#poiImport').hidden=true}catch(e){$('#poiMsg').textContent='Ce texte n\'est pas une liste de repères valide.'}};
+
+/* Production et profil : mêmes calculs que l'outil Quota colis.
+   Heures équivalentes d'une mission = colis / quota du type. Objectif du jour = heures travaillées. */
+const FM=[['hyper','Hyper'],['market','Market'],['proxi','Proxi'],['carton','Carton'],['cash','Cash']];
+const DJ=['Lun','Mar','Mer','Jeu','Ven','Sam'];
+let S=store.get('quota',null)||{set:{h:7,d:5,pause:30,prime:131.59,rate:{hyper:135,market:111,proxi:85,carton:20,cash:110}},data:{},hrs:{},plan:{},fmt:'hyper'};
+S.hrs=S.hrs||{};S.plan=S.plan||{};S.data=S.data||{};S.fmt=S.fmt||'hyper';
+let TM=store.get('timer',null);
+const saveS=()=>store.set('quota',S),saveT=()=>store.set('timer',TM);
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const monday=d=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return x};
+const todayK=()=>iso(new Date());
+const f2=x=>x.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const f0=x=>Math.round(x).toLocaleString('fr-FR');
+const fd=m=>{m=Math.max(1,Math.round(m));if(m<60)return m+' min';const h=Math.floor(m/60),r=m%60;return r?h+' h '+String(r).padStart(2,'0'):h+' h'};
+const pad=n=>String(n).padStart(2,'0');
+const fh=m=>Math.floor(m/60)+'h'+pad(m%60);
+const fc=s=>{const neg=s<0,a=Math.abs(s),h=Math.floor(a/3600),m=Math.floor(a%3600/60);return(neg?'+':'')+(h?h+':'+pad(m):m)+':'+pad(a%60)};
+const nameOf=f=>(FM.find(m=>m[0]===f)||['',f])[1];
+const dh=k=>{const x=S.hrs[k];return x>0?x:S.set.h};
+function calc(k){const e=S.data[k]||[];let h=0,c=0;e.forEach(x=>{h+=x.n/S.set.rate[x.f];c+=x.n});return{h,c,e}}
+
+/* --- Onglet Prod : type + colis + chrono --- */
+function renderTypes(){$('#types').innerHTML=FM.map(([k,n])=>`<button aria-pressed="${S.fmt===k}" data-f="${k}">${n}<small>${S.set.rate[k]} colis/h</small></button>`).join('');$('#types').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.fmt=b.dataset.f;saveS();renderTypes();planned()})}
+function planned(){const n=parseInt($('#nColis').value,10);$('#planned').innerHTML=n>0?`Temps prévu : <b>${fd(n/S.set.rate[S.fmt]*60)}</b>`:'&nbsp;';$('#startBtn').disabled=!(n>0)}
+$('#nColis').addEventListener('input',planned);
+$('#nColis').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#startBtn').click()}});
+let AC=null,WL=null;
+$('#startBtn').onclick=()=>{const n=parseInt($('#nColis').value,10);if(!(n>0)){$('#nColis').focus();return}if(TM)return;
+  try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();AC.resume()}catch(e){}
+  const s=Math.max(1,Math.round(n/S.set.rate[S.fmt]*3600));TM={n,f:S.fmt,total:s,end:Date.now()+s*1000,run:true,beeped:false};
+  (S.data[todayK()]=S.data[todayK()]||[]).push({f:S.fmt,n});saveS();saveT();$('#nColis').value='';$('#nColis').blur();planned();renderProd()};
+const tLeft=()=>!TM?0:TM.run?Math.round((TM.end-Date.now())/1000):TM.left;
+function renderTimer(){const box=$('#timerBox');$('#prodStart').hidden=!!TM;if(!TM){box.innerHTML='';wake(false);return}const l=tLeft();
+  box.innerHTML=`<div class="card tcard${l<=0?' late':''}"><div class="tinfo">${nameOf(TM.f)} · ${f0(TM.n)} colis</div><div class="small" style="text-align:center">Temps prévu ${fd(TM.total/60)}</div><div class="timer huge${l<=0?' over':''}" id="tm">${fc(l)}</div><div class="small" style="text-align:center" id="tl">${l<=0?'Temps dépassé':TM.run?'Temps restant':'En pause'}</div><div class="btnrow"><button class="btn" id="tPause">${TM.run?'Pause':'Reprendre'}</button><button class="btn primary" id="tStop">Mission finie</button></div></div>`;
+  $('#tPause').onclick=()=>{if(TM.run){TM.left=tLeft();TM.run=false}else{TM.end=Date.now()+TM.left*1000;TM.run=true}saveT();renderTimer()};
+  $('#tStop').onclick=()=>{TM=null;saveT();renderProd()};wake(TM.run)}
+function wake(on){try{if(on&&!WL&&navigator.wakeLock)navigator.wakeLock.request('screen').then(x=>{WL=x;x.addEventListener('release',()=>WL=null)}).catch(()=>{});else if(!on&&WL){WL.release();WL=null}}catch(e){}}
+function beep(){try{navigator.vibrate&&navigator.vibrate([300,150,300,150,300])}catch(e){}try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.connect(g);g.connect(AC.destination);o.frequency.value=880;g.gain.value=.2;o.start();o.stop(AC.currentTime+.6)}catch(e){}}
+setInterval(()=>{if(!TM)return;const l=tLeft();if(l<=0&&TM.run&&!TM.beeped){TM.beeped=true;saveT();beep();if(curView==='Prod')renderTimer()}const e=$('#tm');if(e){e.textContent=fc(l);e.classList.toggle('over',l<=0);$('#tl').textContent=l<=0?'Temps dépassé':TM.run?'Temps restant':'En pause'}},1000);
+function renderProd(){renderTypes();planned();renderTimer();const k=todayK(),c=calc(k),hd=dh(k),pct=c.h/hd;
+  $('#daySum').innerHTML=`<div class="row"><span class="lbl">Aujourd'hui</span><span class="small">${c.e.length} mission${c.e.length>1?'s':''} · ${f0(c.c)} colis</span></div><div class="row"><b>${Math.round(pct*100)} %</b><span class="small">${f2(c.h)} h sur ${f2(hd)} h</span></div><div class="bar${pct>=1?' ok':''}"><i style="width:${Math.min(100,pct*100)}%"></i></div>`}
+$('#daySum').onclick=()=>{wk=monday(new Date());sel=Math.min(5,(new Date().getDay()+6)%7);show('Profil')};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&TM){wake(TM.run);renderTimer()}});
+
+/* --- Onglet Profil --- */
+let wk=monday(new Date()),sel=Math.min(5,(new Date().getDay()+6)%7);
+const curK=()=>{const d=new Date(wk);d.setDate(d.getDate()+sel);return iso(d)};
+$('#wPrev').onclick=()=>{wk.setDate(wk.getDate()-7);renderProfil()};$('#wNext').onclick=()=>{wk.setDate(wk.getDate()+7);renderProfil()};
+function monthStats(k){const pre=k.slice(0,7);let H=0,n=0,Wh=0,OT=0;Object.keys(S.data).forEach(d=>{if(d.slice(0,7)===pre){const c=calc(d);if(c.c>0){H+=c.h;n++;const h=dh(d);Wh+=h;OT+=Math.max(0,h-S.set.h)}}});return{H,n,W:Wh,OT}}
+function renderProfil(){
+  const days=[];for(let i=0;i<6;i++){const d=new Date(wk);d.setDate(d.getDate()+i);days.push({k:iso(d),n:d.getDate()})}
+  let H=0,worked=0,WH=0;const calcs=days.map(d=>{const c=calc(d.k);H+=c.h;if(c.c>0){worked++;WH+=dh(d.k)}return c});
+  $('#wLbl').textContent='Semaine du '+wk.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+  $('#days').innerHTML=days.map((d,j)=>{const p=calcs[j].h/dh(d.k),cl=calcs[j].c>0?(p>=1?'ok':'wa'):'';return`<button class="${cl}" aria-pressed="${j===sel}" data-j="${j}">${DJ[j]}<small>${d.n}${calcs[j].c>0?' · '+Math.round(p*100)+'%':''}</small></button>`}).join('');
+  $('#days').querySelectorAll('button').forEach(b=>b.onclick=()=>{sel=+b.dataset.j;renderProfil()});
+  const k=days[sel].k,c=calcs[sel],hd=dh(k),pct=c.h/hd,rem=Math.max(0,hd-c.h);
+  $('#dayCard').innerHTML=`<div class="lbl">Journée</div>
+    <div class="hrow"><label for="hj">Heures travaillées ce jour</label><input class="inp" id="hj" type="number" step="0.25" inputmode="decimal" value="${hd}"></div>
+    ${S.plan[k]?`<div class="small">Planning : ${esc(S.plan[k])}</div>`:''}
+    <div class="kpis"><div class="kpi"><b>${f0(c.c)}</b><span>colis</span></div><div class="kpi"><b>${f2(c.h)} h</b><span>heures éq.</span></div><div class="kpi"><b>${Math.round(pct*100)} %</b><span>objectif</span></div></div>
+    <div class="bar${pct>=1?' ok':''}"><i style="width:${Math.min(100,pct*100)}%"></i></div>
+    <div class="small">${pct>=1?'Quota de la journée atteint.':'Reste '+f2(rem)+' h sur '+f2(hd)+' h'}</div>
+    ${rem>0?`<table class="tbl">${FM.map(([f,n])=>`<tr><td>Reste en ${n}</td><td>${f0(rem*S.set.rate[f])} colis</td></tr>`).join('')}</table>`:''}
+    <div class="lbl" style="margin-top:4px">Missions</div>
+    <div class="mchips">${c.e.length?c.e.map((x,j)=>`<span class="mchip">${nameOf(x.f)} ${f0(x.n)} · ${fd(x.n/S.set.rate[x.f]*60)}<button data-del="${j}" aria-label="Supprimer">✕</button></span>`).join(''):'<span class="small">Aucune mission ce jour.</span>'}</div>
+    <div class="addrow"><select class="inp" id="addF">${FM.map(([f,n])=>`<option value="${f}"${f===S.fmt?' selected':''}>${n}</option>`).join('')}</select><input class="inp" id="addN" type="number" min="1" inputmode="numeric" placeholder="Colis"><button class="btn" id="addGo">Ajouter</button></div>`;
+  $('#hj').onchange=e=>{const x=parseFloat(String(e.target.value).replace(',','.'));if(x>0&&x<=24&&x!==S.set.h)S.hrs[k]=x;else delete S.hrs[k];saveS();renderProfil()};
+  $('#dayCard').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{S.data[k].splice(+b.dataset.del,1);saveS();renderProfil()});
+  $('#addGo').onclick=()=>{const n=parseInt($('#addN').value,10);if(!(n>0))return;(S.data[k]=S.data[k]||[]).push({f:$('#addF').value,n});saveS();renderProfil()};
+  const obj=S.set.h*S.set.d,avg=WH?H/WH:0;
+  $('#weekCard').innerHTML=`<div class="lbl">Semaine</div><div class="kpis"><div class="kpi"><b>${f2(H)} h</b><span>heures éq.</span></div><div class="kpi"><b>${f2(WH)} h</b><span>travaillées</span></div><div class="kpi"><b>${Math.round(avg*100)} %</b><span>rendement</span></div></div>
+    <div class="bar${avg>=1?' ok':''}"><i style="width:${Math.min(100,avg*100)}%"></i></div>
+    <table class="tbl"><tr><td>Jours travaillés</td><td>${worked}</td></tr><tr><td>Colis de la semaine</td><td>${f0(calcs.reduce((a,x)=>a+x.c,0))}</td></tr><tr><td>Objectif de la semaine</td><td>${f2(obj)} h</td></tr></table>
+    ${worked>S.set.d?`<p class="note">Jour supplémentaire : heures supplémentaires au-delà de ${S.set.d} jours.</p>`:''}`;
+  const ms=monthStats(k),mavg=ms.W?ms.H/ms.W:0,mg=ms.H-ms.W;const mn=new Date(k+'T12:00:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  $('#monthCard').innerHTML=`<div class="lbl">Mois de ${mn}</div><div class="kpis"><div class="kpi"><b>${Math.round(mavg*100)} %</b><span>rendement</span></div><div class="kpi"><b>${ms.n}</b><span>jours</span></div><div class="kpi"><b>${mg>=0?'+':''}${f2(mg)} h</b><span>écart à 100 %</span></div></div>
+    <p class="note">La prime demande une moyenne de 100 % ou plus sur tous les jours travaillés du mois. Heures travaillées : ${f2(ms.W)} h${ms.OT>0?' (dont '+f2(ms.OT)+' h supplémentaires)':''}.</p>
+    ${ms.n?`<div><span class="pill${mavg>=1?' ok':''}">${mavg>=1?'Au standard pour l\'instant : prime de '+f2(S.set.prime||0)+' €':'Sous le standard pour l\'instant ('+Math.round(mavg*100)+' %)'}</span></div>`:''}`;
+  renderSettings();
+}
+function renderSettings(){const g=$('#setgrid');if(g.dataset.ok)return;g.dataset.ok=1;
+  g.innerHTML=`<label for="s_h">Heures par jour</label><input class="inp" id="s_h" type="number" step="0.25" inputmode="decimal" value="${S.set.h}"><label for="s_d">Jours par semaine</label><input class="inp" id="s_d" type="number" inputmode="numeric" value="${S.set.d}"><label for="s_pz">Pause déduite d'un planning (min)</label><input class="inp" id="s_pz" type="number" inputmode="numeric" value="${S.set.pause==null?30:S.set.pause}"><label for="s_p">Prime (€)</label><input class="inp" id="s_p" type="number" inputmode="decimal" value="${S.set.prime||0}">`+FM.map(([k,n])=>`<label for="r_${k}">${n} (colis/h)</label><input class="inp" id="r_${k}" type="number" inputmode="numeric" value="${S.set.rate[k]}">`).join('');
+  g.addEventListener('change',()=>{let v=parseFloat($('#s_h').value);if(v>0)S.set.h=v;v=parseInt($('#s_d').value,10);if(v>0)S.set.d=v;v=parseFloat($('#s_p').value);if(v>=0)S.set.prime=v;v=parseInt($('#s_pz').value,10);if(v>=0)S.set.pause=v;FM.forEach(([k])=>{const r=parseFloat($('#r_'+k).value);if(r>0)S.set.rate[k]=r});saveS();renderProfil()})}
+/* lecture du planning collé (même logique que Quota colis) */
+const isoMonday=(y,w)=>{const j=new Date(y,0,4);j.setDate(j.getDate()-((j.getDay()+6)%7)+(w-1)*7);return j};
+function parsePlan(txt){const names=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'],items=[];let wn=null;const mw=txt.match(/semaine\s*(?:n°|no|num[eé]ro)?\s*(\d{1,2})/i);if(mw)wn=parseInt(mw[1],10);const pause=S.set.pause==null?30:S.set.pause;
+  txt.split(/\r?\n/).forEach(line=>{const l=line.toLowerCase();let di=-1;const ml=l.match(/^[\s\-•*·>]*(lun|mar|mer|jeu|ven|sam|dim)/);if(ml)di=['lun','mar','mer','jeu','ven','sam','dim'].indexOf(ml[1]);else names.forEach((n,i)=>{if(di<0&&l.indexOf(n)>=0)di=i});if(di<0||di>5)return;
+    const re=/(\d{1,2})\s*[h:.]\s*(\d{0,2})\s*(?:-|–|—|→|à|au)\s*(\d{1,2})\s*[h:.]\s*(\d{0,2})/g;let m,rg=[],tot=0;while((m=re.exec(l))){const a=parseInt(m[1],10)*60+(parseInt(m[2],10)||0);let b=parseInt(m[3],10)*60+(parseInt(m[4],10)||0);if(b<=a)b+=1440;rg.push([a,b]);tot+=b-a}
+    if(rg.length){const net=rg.length===1?Math.max(0,tot-pause):tot;items.push({di,rest:false,label:rg.map(r=>fh(r[0])+'–'+fh(r[1]%1440)).join(' et '),h:net/60,pauseUsed:rg.length===1&&pause>0})}
+    else if(/repos|cong[eé]|rtt|absent|\boff\b|non travaill/.test(l))items.push({di,rest:true,label:'Repos',h:0});else items.push({di,bad:true,raw:line.trim()})});return{wn,items}}
+let PP=null;
+$('#planRead').onclick=()=>{const r=parsePlan($('#planTxt').value),pv=$('#planOut');if(!r.items.length){pv.innerHTML='<p class="note">Aucun jour reconnu. Le texte doit contenir par exemple « Lundi : 13h00-20h30 ».</p>';PP=null;return}
+  const mon=r.wn?isoMonday(new Date().getFullYear(),r.wn):new Date(wk);let o=`<p><b>Semaine du ${mon.toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}</b>${r.wn?' (semaine '+r.wn+')':''}</p><table class="tbl">`,ok=0;
+  r.items.forEach(it=>{const d=new Date(mon);d.setDate(d.getDate()+it.di);it.k=iso(d);const dn=DJ[it.di]+' '+d.getDate();if(it.bad)o+=`<tr><td>${dn}</td><td>Non reconnu : ${esc(it.raw)}</td></tr>`;else{ok++;o+=`<tr><td>${dn}</td><td>${it.rest?'Repos':esc(it.label)+' → '+f2(it.h)+' h'}</td></tr>`}});
+  o+='</table>';if(ok){o+='<button class="btn primary" id="planApply" style="margin-top:8px;width:100%">Appliquer à cette semaine</button>';PP={mon,items:r.items}}else PP=null;pv.innerHTML=o;
+  const b=$('#planApply');if(b)b.onclick=()=>{PP.items.forEach(it=>{if(it.bad)return;if(it.rest){delete S.hrs[it.k];S.plan[it.k]='Repos'}else{const h=Math.round(it.h*100)/100;if(Math.abs(h-S.set.h)<.001)delete S.hrs[it.k];else S.hrs[it.k]=h;S.plan[it.k]=it.label}});saveS();wk=new Date(PP.mon);pv.innerHTML='<p class="note">Planning appliqué. Les heures de chaque jour restent modifiables.</p>';PP=null;renderProfil()}};
+$('#bkOut').onclick=()=>{const t=$('#bkTxt');t.value=JSON.stringify({quota:S,pois:POIS});t.select();try{navigator.clipboard.writeText(t.value).then(()=>$('#bkMsg').textContent='Copié. Garde ce texte dans tes notes ou un message.',()=>$('#bkMsg').textContent='Texte sélectionné : copie-le.')}catch(e){$('#bkMsg').textContent='Texte sélectionné : copie-le.'}};
+$('#bkIn').onclick=()=>{try{const p=JSON.parse($('#bkTxt').value);const q=p.quota||p;if(q&&q.set&&q.data){S=Object.assign({hrs:{},plan:{},fmt:'hyper'},q);saveS();if(Array.isArray(p.pois)){POIS=p.pois;savePois()}$('#setgrid').dataset.ok='';renderProfil();renderProd();$('#bkMsg').textContent='Données restaurées.'}else throw 0}catch(e){$('#bkMsg').textContent='Ce texte n\'est pas une sauvegarde valide.'}};
+
+
+const retheme=()=>{if(G){buildBase();draw()}};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',retheme);
+new MutationObserver(retheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+new ResizeObserver(resize).observe($('#mapwrap'));
+show(store.get('tab3','Prod'));
+load().then(()=>{
+  buildBase();resize();
+  const sf=store.get('from',null);let f=null;
+  if(sf){if(sf.kind==='loc'){const o=LOCS.find(o=>o.id===sf.ref);if(o)f=T.loc(o)}else if(sf.kind==='quai'){const q=QUAIS.find(q=>q.id===sf.ref);if(q)f=T.quai(q)}else if(sf.kind==='poi'){const p=POIS.find(p=>p.id===sf.ref);if(p)f=T.poi(p)}else if(sf.kind==='cell')f=T.cell(sf.x,sf.y,sf.label)}
+  state.from=f||T.start();$('#fromLbl').textContent=state.from.label;
+  renderPois();
+  if(vw){needFit=false;fitAll()}
+  }).catch(e=>{$('#sheet').innerHTML='<div class="card"><b>Le plan n\'a pas pu être chargé.</b><span class="small">Recharge la page.</span></div>';console.error(e)});
+})();
+</script>
+
+<div id="updToast" hidden style="position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:600;font-size:14px;z-index:50;box-shadow:var(--shadow)">Appli mise à jour</div>
+<script>
+/* Mises à jour automatiques : à l'ouverture et à chaque retour sur l'appli, on vérifie version.json.
+   Si une nouvelle version existe, le service worker l'installe et la page se recharge (le chrono et les données sont conservés). */
+(()=>{const APP_VERSION='202611251154';if(!('serviceWorker' in navigator))return;
+  let reloading=false;const hadCtrl=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloading||!hadCtrl)return;reloading=true;try{sessionStorage.setItem('gp_upd','1')}catch(e){}location.reload()});
+  try{if(sessionStorage.getItem('gp_upd')){sessionStorage.removeItem('gp_upd');const t=document.getElementById('updToast');t.hidden=false;setTimeout(()=>t.hidden=true,3000)}}catch(e){}
+  addEventListener('load',async()=>{let reg;try{reg=await navigator.serviceWorker.register('sw.js',{updateViaCache:'none'})}catch(e){return}
+    const check=async()=>{try{const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});const v=(await r.json()).version;if(v&&v!==APP_VERSION)await reg.update()}catch(e){}};
+    check();document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()});setInterval(check,15*60*1000)})})();
+</script>
+</body></html>
