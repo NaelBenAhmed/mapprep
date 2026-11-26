@@ -121,6 +121,16 @@ details.settings summary{cursor:pointer;font-weight:700;color:var(--muted);font-
 .setgrid{display:grid;grid-template-columns:1fr 110px;gap:8px;align-items:center;margin-top:10px}
 .setgrid .inp{padding:8px 10px;font-size:16px}
 nav.tabbar{grid-template-columns:repeat(4,1fr)!important}
+/* Signalements participatifs */
+.fab button.repfab{background:var(--warn);color:#fff;border-color:transparent;position:relative}
+.rcount{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--bad);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;border:2px solid var(--panel)}
+.rtypes{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.rtypes button{border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:7px 8px;line-height:1.15;font-weight:700;font-size:14px;text-align:left;display:flex;align-items:center;gap:8px}
+.rtypes button[aria-pressed="true"]{background:var(--warn);color:#fff;border-color:transparent}
+.rico{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex:none}
+.rlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.rlist li{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);border-radius:10px;cursor:pointer}
+.rlist .grow{flex:1;min-width:0}
 /* Assistant (onglet Aide) : discussion hors ligne, répond uniquement avec les données de l'appli */
 .chat{position:absolute;inset:0;display:flex;flex-direction:column}
 .msgs{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
@@ -196,6 +206,7 @@ details.fold textarea.inp{min-height:90px}
     </div>
     <div class="hint" id="hint" hidden></div>
     <div class="fab" id="fab">
+      <button id="repBtn" class="repfab" aria-label="Signaler une anomalie" title="Signaler une anomalie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17v.5" stroke-linecap="round"/></svg><span class="rcount" id="repCount" hidden></span></button>
       <button id="locBtn" aria-label="Me localiser" title="Me localiser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
       <button id="zin" aria-label="Zoomer">+</button>
       <button id="zout" aria-label="Dézoomer">−</button>
@@ -303,7 +314,7 @@ async function load(){
    Allées horizontales (F, G, I, J) : impaire de la gauche vers la droite, paire de la droite vers la gauche.
    Seul le couloir entre les deux rangées de racks est à sens unique ; les allées transversales restent libres.
    ONEWAY[cellule] : 0 libre, 1 vers le bas, 2 vers le haut, 3 vers la droite, 4 vers la gauche. */
-let ONEWAY;
+let ONEWAY,PEN=null;
 function buildOneWay(){ONEWAY=new Uint8Array(W*H);
   for(const a of AISLES.values()){const num=parseInt(a.id.split('-')[1],10);if(!num)continue;const odd=num%2===1;
     const xs=new Set(a.locs.map(l=>l.x)),ys=new Set(a.locs.map(l=>l.y));const w=a.maxx-a.minx,h=a.maxy-a.miny;let dir=0,cells=[];
@@ -318,14 +329,16 @@ pop(){const K=this.k,V=this.v,top=V[0],lk=K.pop(),lv=V.pop(),n=K.length;if(n){le
 const DIRS=[[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,Math.SQRT2],[1,-1,Math.SQRT2],[-1,1,Math.SQRT2],[-1,-1,Math.SQRT2]];
 function dijkstra(src,goals){const dist=new Float32Array(W*H).fill(Infinity),prev=new Int32Array(W*H).fill(-1),h=new Heap();dist[src]=0;h.push(0,src);let hit=-1;
   while(h.size){const i=h.pop();if(goals&&goals.has(i)){hit=i;break}const di=dist[i],x=i%W,y=(i/W)|0;
-    for(const[dx,dy,c]of DIRS){const a=x+dx,b=y+dy;if(a<0||b<0||a>=W||b>=H)continue;const j=b*W+a;if(!REACH[j])continue;if(dx&&dy&&(!REACH[y*W+a]||!REACH[b*W+x]))continue;if(against(ONEWAY[i],dx,dy)||against(ONEWAY[j],dx,dy))continue;const nd=di+c;if(nd<dist[j]){dist[j]=nd;prev[j]=i;h.push(nd,j)}}}
+    for(const[dx,dy,c]of DIRS){const a=x+dx,b=y+dy;if(a<0||b<0||a>=W||b>=H)continue;const j=b*W+a;if(!REACH[j])continue;if(dx&&dy&&(!REACH[y*W+a]||!REACH[b*W+x]))continue;if(against(ONEWAY[i],dx,dy)||against(ONEWAY[j],dx,dy))continue;const nd=di+c+(PEN?PEN[j]:0);if(nd<dist[j]){dist[j]=nd;prev[j]=i;h.push(nd,j)}}}
   return{dist,prev,hit}}
 function goalsAround(x,y){const s=new Set();if(x>=0&&y>=0&&x<W&&y<H&&REACH[y*W+x]){s.add(y*W+x);return s}
   for(let r=1;r<=4&&!s.size;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;if(r===1&&dx&&dy)continue;const a=x+dx,b=y+dy;if(a<0||b<0||a>=W||b>=H)continue;if(REACH[b*W+a])s.add(b*W+a)}
   if(!s.size)for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const a=x+dx,b=y+dy;if(a>=0&&b>=0&&a<W&&b<H&&REACH[b*W+a])s.add(b*W+a)}return s}
 function goalsOf(t){if(t.goals)return t.goals;let s;if(t.kind==='aisle'){s=new Set();for(const l of AISLES.get(t.ref).locs)for(const g of goalsAround(l.x,l.y))s.add(g);s=inCorr(t.ref,s)}else{s=goalsAround(t.x,t.y);if(t.kind==='loc')s=inCorr(t.ref.split('-').slice(0,2).join('-'),s)}t.goals=s;return s}
 function cellOf(t){if(REACH[t.y*W+t.x])return t.y*W+t.x;let best=-1,bd=1e9;for(const j of goalsOf(t)){const d=Math.hypot(j%W-t.x,((j/W)|0)-t.y);if(d<bd){bd=d;best=j}}return best}
-function route(a,b){const src=cellOf(a);if(src<0)return null;const goals=goalsOf(b);if(goals.has(src))return{cells:[src],len:0};const{dist,prev,hit}=dijkstra(src,goals);if(hit<0)return null;const cells=[];for(let i=hit;i>=0;i=prev[i])cells.push(i);cells.reverse();return{cells,len:dist[hit]}}
+function route(a,b){const src=cellOf(a);if(src<0)return null;const goals=goalsOf(b);if(goals.has(src))return{cells:[src],len:0};const{dist,prev,hit}=dijkstra(src,goals);if(hit<0)return null;const cells=[];for(let i=hit;i>=0;i=prev[i])cells.push(i);cells.reverse();
+  // Distance réelle (sans les pénalités des signalements, qui ne servent qu'à choisir le chemin)
+  let len=0;for(let k=1;k<cells.length;k++)len+=Math.hypot(cells[k]%W-cells[k-1]%W,((cells[k]/W)|0)-((cells[k-1]/W)|0));return{cells,len}}
 function simplify(c){if(c.length<3)return c.slice();const o=[c[0]];for(let k=1;k<c.length-1;k++){const a=c[k-1],b=c[k],d=c[k+1];if(b-a!==d-b)o.push(b)}o.push(c[c.length-1]);return o}
 
 const T={
@@ -378,6 +391,7 @@ function render(){raf=0;if(!base)return;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fi
   if(s>=7){ctx.font=`700 ${Math.min(12,s*.5)}px "Barlow",sans-serif`;ctx.fillStyle=colors.quai;for(const q of QUAIS){const x=sx(q.x+.5),y=sy(q.y+.5);if(x<-20||x>vw+20||y<-20||y>vh+20)continue;ctx.fillText(q.id,x+(q.x>=W-2?-s*1.6:0),y+(q.x>=W-2?0:(q.y>100?s*1.2:-s*1.2)))}}
   for(const p of PRINTERS)pin(p.x,p.y,p.type==='imprimante'?colors.quai:colors.poi,p.short);
   for(const p of POIS)pin(p.x,p.y,colors.poi,(POI_TYPES[p.type]||'?')[0]);
+  drawReports();
   const paths=tour?tour.legs.map((l,i)=>({cells:l.cells,dim:i!==tour.cur})):(state.route?[{cells:state.route.cells}]:[]);
   for(const p of paths){if(p.cells.length<2)continue;const pts=simplify(p.cells);ctx.lineJoin='round';ctx.lineCap='round';ctx.beginPath();pts.forEach((c,k)=>{const x=sx(c%W+.5),y=sy(((c/W)|0)+.5);k?ctx.lineTo(x,y):ctx.moveTo(x,y)});
     ctx.globalAlpha=p.dim?.3:1;ctx.strokeStyle=colors['route-case'];ctx.lineWidth=Math.max(5,s*.9)+3;ctx.stroke();ctx.strokeStyle=colors.route;ctx.lineWidth=Math.max(4,s*.9);ctx.stroke();ctx.globalAlpha=1}
@@ -420,7 +434,9 @@ function setHint(t){$('#hint').hidden=!t;$('#hint').textContent=t||''}
 function onMapTap(x,y){if(x<0||y<0||x>=W||y>=H)return;
   if(state.pick==='from'){const t=targetAt(x,y)||T.cell(x,y);state.pick=null;setHint('');state.sheet=null;setFrom(t,true);return}
   if(state.pick==='poi'){state.pick=null;setHint('');openPoiSheet(x,y);return}
+  if(state.pick==='rep'){state.pick=null;setHint('');repDraft.at=targetAt(x,y)||T.cell(x,y,nearLabel(x,y));state.sel=repDraft.at;state.sheet='repNew';renderSheet();draw();return}
   if(tour)return;
+  const rp=repAt(x,y);if(rp){state.repSel=rp.id;state.sel=null;state.sheet='rep';renderSheet();draw();return}
   const t=targetAt(x,y);state.sel=t;state.sheet=t?'sel':null;renderSheet();draw()}
 function targetAt(x,y){for(let r=0;r<=1;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){const a=x+dx,b=y+dy;if(a<0||b<0||a>=W||b>=H)continue;const li=LOC_AT[b*W+a];if(li>=0)return T.loc(LOCS[li]);const p=POIS.find(p=>p.x===a&&p.y===b)||PRINTERS.find(p=>Math.abs(p.x-a)<=1&&Math.abs(p.y-b)<=1);if(p)return T.poi(p);const q=QUAIS.find(q=>q.x===a&&q.y===b);if(q)return T.quai(q)}return null}
 function setFrom(t,byUser){state.from=t;$('#fromLbl').textContent=t.label;store.set('from',{kind:t.kind,ref:t.ref,x:t.x,y:t.y,label:t.label});if(byUser)geo.onManual(t);computeRoute()}
@@ -433,11 +449,12 @@ function renderSheet(){const el=$('#sheet');let h='';
   if(state.sheet==='where'){h=`<div class="card"><div class="lbl">Où suis-je ?</div><div class="field"><input class="inp" id="whereIn" autocomplete="off" placeholder="Emplacement devant toi, ex. B-07-012"><ul class="results" id="whereRes" hidden></ul></div>
     <div class="btnrow"><button class="btn blue" id="whereGps">Utiliser le GPS</button><button class="btn" id="whereTap">Toucher le plan</button></div><div class="btnrow"><button class="btn" id="whereStart">Zone de départ</button><button class="btn" id="whereClose">Fermer</button></div><p class="note" id="whereMsg">${esc(geo.status())}</p></div>`}
   else if(state.sheet==='poi'){h=poiSheetHtml}
+  else if(state.sheet==='repNew'||state.sheet==='rep'||state.sheet==='repList'){h=repSheetHtml()}
   else if(state.sheet==='msg'){h=`<div class="card"><p class="note" style="font-size:15px">${esc(state.msg||'')}</p><div class="btnrow"><button class="btn" id="msgClose">Fermer</button></div></div>`}
   else if(tour){const st=tour.stops[tour.cur];const done=tour.stops.filter(s=>s.done).length;const leg=tour.legs[tour.cur];
     if(st)h=`<div class="card"><div class="lbl">Tournée · arrêt ${tour.cur+1} sur ${tour.stops.length}</div><div class="rhead"><span class="big code" style="font-size:30px">${esc(st.t.label)}</span><span class="small">${leg?fmtTime(leg.len)+' · '+Math.round(leg.len)+' m':''}</span></div><div class="chips">${details(st.t)}</div><div class="btnrow"><button class="btn primary" id="stopDone">Pris, arrêt suivant</button></div><div class="btnrow"><button class="btn" id="tourList">Liste (${done}/${tour.stops.length})</button><button class="btn" id="tourQuit">Arrêter</button></div><div id="tourListBox" hidden></div></div>`;
     else h=`<div class="card"><div class="lbl">Tournée terminée</div><div class="rhead"><span class="big">${tour.stops.length} arrêts faits</span></div>${tour.end?`<div class="small">Dernier trajet vers <b>${esc(tour.end.label)}</b> affiché.</div>`:''}<div class="btnrow"><button class="btn primary" id="tourQuit">Fermer la tournée</button></div></div>`}
-  else if(state.sheet==='sel'&&state.sel){const t=state.sel;h=`<div class="card"><div><span class="badge ${t.kind}">${BADGE[t.kind]}</span> <span class="code" style="font-size:18px">${esc(t.label)}</span></div><div class="chips">${details(t)}</div><div class="btnrow"><button class="btn primary" id="selTo">Y aller</button><button class="btn" id="selFrom">Je suis ici</button></div></div>`}
+  else if(state.sheet==='sel'&&state.sel){const t=state.sel;h=`<div class="card"><div><span class="badge ${t.kind}">${BADGE[t.kind]}</span> <span class="code" style="font-size:18px">${esc(t.label)}</span></div><div class="chips">${details(t)}</div><div class="btnrow"><button class="btn primary" id="selTo">Y aller</button><button class="btn" id="selFrom">Je suis ici</button></div><button class="btn" id="selRep">Signaler un problème ici</button></div>`}
   else if(state.to){const r=state.route;h=r?`<div class="card"><div class="rhead"><span class="big">${fmtTime(r.len)}</span><span class="small">${Math.round(r.len*CELL_M)} m à pied</span></div><div><span class="badge ${state.to.kind}">${BADGE[state.to.kind]}</span> <span class="code" style="font-size:18px">${esc(state.to.label)}</span></div><div class="chips">${details(state.to)}</div><div class="btnrow"><button class="btn primary" id="arrived">Je suis arrivé</button><button class="btn" id="routeClose" style="flex:0 0 auto">Fermer</button></div></div>`:`<div class="card"><b>Pas d'itinéraire trouvé.</b><span class="small">Indique où tu es avec « Où suis-je ? ».</span></div>`}
   el.innerHTML=h;wireSheet();requestAnimationFrame(()=>{const c=$('#sheet .card');$('#fab').style.bottom=(c?c.getBoundingClientRect().height+20:12)+'px'})}
 function wireSheet(){const on=(id,f)=>{const b=document.getElementById(id);if(b)b.onclick=f};
@@ -452,6 +469,7 @@ function wireSheet(){const on=(id,f)=>{const b=document.getElementById(id);if(b)
   on('whereGps',()=>geo.locate());on('whereTap',()=>{state.pick='from';state.sheet=null;renderSheet();setHint('Touche l\'endroit où tu es')});
   on('whereStart',()=>{state.sheet=null;setFrom(T.start(),false)});on('whereClose',()=>{state.sheet=null;renderSheet()});
   if($('#whereIn'))auto($('#whereIn'),$('#whereRes'),t=>{state.sheet=null;setFrom(t,true)});
+  on('selRep',()=>repOpen(state.sel));wireRep(on);
   on('poiSave',savePoiFromSheet);on('poiCancel',()=>{state.sheet=null;state.sel=null;renderSheet();draw()});
   if($('#poiType')){const sync=()=>{if(!$('#poiName').dataset.t)$('#poiName').value=POI_TYPES[$('#poiType').value]};sync();$('#poiType').onchange=sync;$('#poiName').oninput=()=>$('#poiName').dataset.t=1}
 }
@@ -466,7 +484,7 @@ function auto(inp,list,onPick){let items=[],idx=-1;
   function pick(t){list.hidden=true;inp.blur();onPick(t)}}
 auto($('#to'),$('#toRes'),t=>{tour=null;setTo(t)});
 /* Aller à l'imprimante / la filmeuse la plus proche (distance réelle à pied depuis le départ) */
-function nearest(type){const c=PRINTERS.filter(p=>p.type===type).concat(POIS.filter(p=>p.type===type));if(!c.length)return null;const src=cellOf(state.from||T.start());if(src<0)return null;const{dist}=dijkstra(src,null);let best=null,bd=Infinity;for(const p of c){const t=T.poi(p);for(const g of goalsOf(t))if(dist[g]<bd){bd=dist[g];best=t}}return best}
+function nearest(type){const all=PRINTERS.filter(p=>p.type===type).concat(POIS.filter(p=>p.type===type));const c=all.filter(p=>!hsNear(p,type));if(!c.length&&all.length)return null;if(!c.length)return null;const src=cellOf(state.from||T.start());if(src<0)return null;const{dist}=dijkstra(src,null);let best=null,bd=Infinity;for(const p of c){const t=T.poi(p);for(const g of goalsOf(t))if(dist[g]<bd){bd=dist[g];best=t}}return best}
 document.querySelectorAll('[data-near]').forEach(b=>b.onclick=()=>{const type=b.dataset.near;const t=nearest(type);if(!t){state.to=null;state.sheet='msg';state.msg=type==='filmeuse'?'Aucune filmeuse sur le plan pour l\'instant. Ajoute-la dans Profil › Repères du plan.':'Aucune imprimante trouvée.';renderSheet();return}tour=null;setTo(t)});
 $('#whereBtn').onclick=()=>{state.sheet='where';renderSheet();setTimeout(()=>{const w=$('#whereIn');if(w)w.focus()},60)};
 
@@ -628,7 +646,7 @@ const HOWTO=[
   {k:/(FORMAT|LIRE|LECTURE|COMPRENDRE).*(EMPLACEMENT|ADRESSE|CODE)|EMPLACEMENT.*(VEUT DIRE|SIGNIFIE)/,a:'<p>Un emplacement s\'écrit <b>Zone-Allée-Position</b>, par exemple <span class="code">B-07-012</span> : zone B, allée B-07, position 012. Tu peux le taper sans tirets : « b07012 ».</p>'},
   {k:/PRIME.*(MARCHE|CALCUL|COMMENT|CONDITION)|COMMENT.*PRIME/,a:'<p>La prime ({P} €) demande une moyenne de <b>100 % ou plus</b> sur tous les jours travaillés du mois. Le pourcentage d\'un jour = heures équivalentes (colis ÷ quota du type) ÷ heures travaillées.</p>'},
 ];
-const SUGG0=['Où est B-07-012 ?','Imprimante la plus proche','Sens de l\'allée A-03','Temps pour 200 colis hyper','Où j\'en suis ?','Comment ajouter un repère ?'];
+const SUGG0=['Où est B-07-012 ?','Signalements en cours','Imprimante la plus proche','Sens de l\'allée A-03','Temps pour 200 colis hyper','Où j\'en suis ?','Comment ajouter un repère ?'];
 let CHAT=store.get('chat',[]);
 const fromT=()=>state.from||(START0?T.start():null);
 function distTxt(t){const f=fromT();if(!f||!REACH)return'';const r=route(f,t);if(!r)return'';return`<p class="small">Depuis ${esc(f.label)} : environ <b>${fmtTime(r.len)}</b> (${Math.round(r.len*CELL_M)} m).</p>`}
@@ -643,6 +661,10 @@ function answer(raw){const q=strip(raw).replace(/[’']/g,"'").replace(/\s+/g,' 
   if(/^(BONJOUR|SALUT|HELLO|COUCOU|BJR|SLT|HEY|YO)\b/.test(q)&&q.length<25)return{h:'<p>Salut ! Je suis l\'assistant de l\'appli. Je connais le plan, les emplacements, les quais, les imprimantes, le sens des allées, les quotas et ta journée. Pose ta question.</p>',s:SUGG0};
   if(/^(MERCI|OK|D'ACCORD|SUPER|PARFAIT|TOP|CIMER)\b/.test(q))return{h:'<p>Avec plaisir. Bon courage pour la prépa !</p>'};
   if(/^(AIDE|HELP|\?)$|QUE SAIS|TU (PEUX|SAIS)|QUOI DEMANDER|QUESTIONS/.test(q))return{h:'<p>Je peux t\'aider pour :</p><ul><li>trouver un emplacement, une allée, un quai ou une imprimante, et t\'y emmener ;</li><li>le sens de circulation des allées ;</li><li>le temps prévu selon le nombre de colis et le type ;</li><li>ton avancement du jour et la prime ;</li><li>l\'utilisation de l\'appli (mission, repères, planning, compte…).</li></ul><p class="small">Je réponds uniquement avec les infos de l\'appli. Pour un process d\'entrepôt, demande à ton chef d\'équipe.</p>',s:SUGG0};
+  // Signalements participatifs
+  if(/COMMENT.*SIGNAL|^SIGNALER|JE (VEUX|VOUDRAIS) SIGNALER/.test(q))return{h:'<p>Sur le <b>Plan</b>, appuie sur le bouton orange ⚠, choisis le type (filmeuse HS, flaque, allée bloquée…), le lieu (ta position ou un point touché sur le plan), puis <b>Envoyer</b>. Tout le monde le voit à la prochaine actualisation (toutes les 3 min).</p><p class="small">Sur un signalement : « Toujours là » le prolonge, « C\'est réglé » le retire pour tous.</p>',a:[{label:'Signaler',fn:()=>repOpen(null)}]};
+  if(/SIGNALEMENT|ANOMALIE|PROBLEME|INCIDENT|\bHS\b|PANNE|FLAQUE|BLOQUE|DANGER|OBSTACLE/.test(q)){const act=repActive().sort((a,b)=>b.at-a.at);if(!act.length)return{h:'<p>Aucun signalement en cours. Tu as vu un problème ? Signale-le.</p>',a:[{label:'Signaler',fn:()=>repOpen(null)}]};
+    return{h:`<p>${act.length} signalement${act.length>1?'s':''} en cours :</p><ul>${act.slice(0,8).map(r=>`<li><b>${esc((RT[r.type]||RT.autre).n)}</b> · ${esc(r.label||'')} · ${ago(r.at)}</li>`).join('')}</ul>`,a:[{label:'Voir sur le plan',fn:()=>{show('Plan');state.sheet='repList';renderSheet()}},{label:'Signaler',fn:()=>repOpen(null)}]}}
   // Imprimante / filmeuse la plus proche
   const nt=/FILMEUSE/.test(q)?'filmeuse':/IMPRIM|PRINT/.test(q)?'imprimante':null;
   if(nt&&/PROCHE|PRES|COTE|PROXIMIT|PLUS PRES|LA OU/.test(q)){const t=nearest(nt);if(!t)return{h:nt==='filmeuse'?'<p>Aucune filmeuse n\'est sur le plan pour l\'instant. Tu peux l\'ajouter dans Profil › Repères du plan.</p>':'<p>Je ne trouve pas d\'imprimante sur le plan.</p>'};return{h:`<p>${nt==='filmeuse'?'La filmeuse':'L\'imprimante'} la plus proche est <b>${esc(t.label)}</b>.</p>${distTxt(t)}`,a:[goBtn(t)]}}
@@ -715,8 +737,78 @@ var acct=(()=>{const ENDPOINT='https://script.google.com/macros/s/AKfycbwUik2hqO
     el.innerHTML=`<p class="note">Première fois ? Choisis un nom et un mot de passe puis appuie sur « Créer un compte ». Tu retrouveras tes missions sur n'importe quel téléphone.</p><input class="inp" id="acName" autocomplete="username" placeholder="Nom (ex. prénom.nom)"><input class="inp" id="acPwd" type="password" autocomplete="current-password" placeholder="Mot de passe"><div class="btnrow"><button class="btn primary" id="acGo">Se connecter</button><button class="btn" id="acNew">Créer un compte</button></div><p class="note" id="acMsg" style="${err?'color:var(--bad)':''}">${esc(err||msg)}</p>`;
     $('#acGo').onclick=()=>connect(false);$('#acNew').onclick=()=>connect(true)}
   addEventListener('online',push);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&A)pull()});
-  return{dirty,render,start(){render();if(A&&ENDPOINT&&!ENDPOINT.startsWith('__'))pull()}}})();
+  return{dirty,render,call,who:()=>A,start(){render();if(A&&ENDPOINT&&!ENDPOINT.startsWith('__'))pull()}}})();
 window.acct=acct;acct.start();
+
+/* --- Signalements participatifs (façon Waze) ---
+   Chacun peut signaler une anomalie sur le plan (filmeuse HS, flaque…). Les signalements partent dans
+   l'onglet « Signalements » du Google Sheet via le même script que les comptes (aucun compte Google).
+   L'appli les relit toutes les 3 minutes en arrière-plan, sans écran de chargement : si rien n'a changé,
+   le serveur répond juste « pareil » (quelques octets). Hors réseau, les envois attendent et repartent seuls.
+   Une allée bloquée ou un obstacle rallonge le coût du passage : l'itinéraire les contourne si possible. */
+const RT={
+  filmeuse_hs:{n:'Filmeuse HS',l:'F',ttl:24},imprimante_hs:{n:'Imprimante HS',l:'I',ttl:24},
+  flaque:{n:'Flaque / sol glissant',l:'~',ttl:4,rad:1,pen:4,danger:1},obstacle:{n:'Palette / obstacle',l:'!',ttl:2,rad:2,pen:12,danger:1},
+  allee_bloquee:{n:'Allée bloquée',l:'X',ttl:2,rad:4,pen:30,danger:1},casse:{n:'Casse / produit renversé',l:'C',ttl:4,rad:1,pen:4,danger:1},
+  eclairage:{n:'Éclairage en panne',l:'E',ttl:48},autre:{n:'Autre anomalie',l:'?',ttl:8}};
+const REP={list:store.get('reports',[]),ver:store.get('repver',0),pend:store.get('repq',[]),t:0,off:false,msg:''};
+let repDraft={type:null,at:null,note:''},repFlushing=false;
+const rcol=k=>(RT[k]||RT.autre).danger?colors.bad||'#c2372f':colors.warn||'#b97a00';
+const ago=ms=>{const m=Math.max(0,Math.round((Date.now()-ms)/60000));return m<1?'à l\'instant':m<60?'il y a '+m+' min':'il y a '+Math.floor(m/60)+' h'+(m%60?' '+pad(m%60):'')};
+const repActive=()=>{const now=Date.now();return REP.list.filter(r=>!r.exp||r.exp>now)};
+function repAt(x,y){let best=null,bd=2.3;for(const r of repActive()){const d=Math.hypot(r.x-x,r.y-y);if(d<bd){bd=d;best=r}}return best}
+function hsNear(p,type){const t=type==='filmeuse'?'filmeuse_hs':type==='imprimante'?'imprimante_hs':null;return!!t&&repActive().some(r=>r.type===t&&Math.hypot(r.x-p.x,r.y-p.y)<=3)}
+function buildPen(){if(!W)return;const act=repActive().filter(r=>(RT[r.type]||{}).pen);if(!act.length){PEN=null;return}PEN=new Float32Array(W*H);
+  for(const r of act){const{rad,pen}=RT[r.type];for(let dy=-rad;dy<=rad;dy++)for(let dx=-rad;dx<=rad;dx++){const a=r.x+dx,b=r.y+dy;if(a<0||b<0||a>=W||b>=H)continue;const i=b*W+a;PEN[i]=Math.max(PEN[i],pen)}}}
+function nearLabel(x,y){for(let r=0;r<=6;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){const a=x+dx,b=y+dy;if(a<0||b<0||a>=W||b>=H)continue;const li=LOC_AT[b*W+a];if(li>=0)return'Allée '+LOCS[li].aisle+', vers '+LOCS[li].id}
+  const q=QUAIS.reduce((m,q)=>{const d=Math.hypot(q.x-x,q.y-y);return d<m.d?{d,q}:m},{d:15,q:null}).q;return q?'Près du quai '+q.id:'Point sur le plan'}
+function drawReports(){const sel=state.sheet==='rep'?state.repSel:null;
+  for(const r of repActive()){const x=sx(r.x+.5),y=sy(r.y+.5),s=r.id===sel?16:13;if(x<-30||x>vw+30||y<-30||y>vh+30)continue;
+    ctx.save();ctx.globalAlpha=r.local?.65:1;ctx.beginPath();ctx.moveTo(x,y-s);ctx.lineTo(x+s*1.05,y+s*.8);ctx.lineTo(x-s*1.05,y+s*.8);ctx.closePath();ctx.fillStyle=rcol(r.type);ctx.fill();ctx.lineWidth=r.id===sel?3:2;ctx.strokeStyle=r.id===sel?colors.sel:colors.panel;ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font=`800 ${Math.round(s*.85)}px "Barlow",sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText((RT[r.type]||RT.autre).l,x,y+s*.22);ctx.restore()}}
+function repBadge(){const n=repActive().length,e=$('#repCount');e.hidden=!n;e.textContent=n}
+function repSave(){store.set('reports',REP.list);store.set('repq',REP.pend);store.set('repver',REP.ver)}
+function repChanged(){buildPen();repBadge();if(state.from&&state.to&&!tour){state.route=route(state.from,state.to);if(!state.sheet)renderSheet()}draw()}
+const flash=t=>{setHint(t);clearTimeout(flash.t);flash.t=setTimeout(()=>{if(!state.pick)setHint('')},2600)};
+function repOpen(at){if(curView!=='Plan')show('Plan');repDraft={type:null,at:at||state.from||null,note:''};REP.msg='';state.repSel=null;state.sheet='repNew';renderSheet();draw()}
+function repSheetHtml(){const act=repActive();
+  if(state.sheet==='repNew'){const at=repDraft.at;return`<div class="card"><div class="lbl">Signaler une anomalie</div><div class="rtypes">${Object.entries(RT).map(([k,t])=>`<button data-rt="${k}" aria-pressed="${repDraft.type===k}"><span class="rico" style="background:${rcol(k)}">${esc(t.l)}</span>${esc(t.n)}</button>`).join('')}</div>
+    <div class="small">Lieu : <b>${at?esc(at.label):'à choisir'}</b></div><div class="btnrow"><button class="btn" id="repPlace">Toucher le plan</button>${state.from?'<button class="btn" id="repHere">Ma position</button>':''}</div>
+    <input class="inp" id="repNote" maxlength="140" placeholder="Détail (facultatif)" value="${esc(repDraft.note)}"><div class="btnrow"><button class="btn primary" id="repSend"${repDraft.type&&at?'':' disabled'}>Envoyer</button><button class="btn" id="repCancel">Annuler</button></div>
+    ${REP.off?'<p class="note">Signalements visibles par toi seul pour l\'instant : le serveur n\'est pas encore à jour. Ils partiront automatiquement.</p>':''}${act.length?`<button class="linkbtn" id="repSeeAll">Voir les ${act.length} signalement${act.length>1?'s':''} en cours</button>`:''}</div>`}
+  if(state.sheet==='rep'){const r=act.find(x=>x.id===state.repSel);if(!r)return'<div class="card"><p class="note" style="font-size:15px">Ce signalement a été réglé ou a expiré.</p><div class="btnrow"><button class="btn" id="repClose">Fermer</button></div></div>';const t=RT[r.type]||RT.autre;
+    return`<div class="card"><div class="rhead" style="align-items:center"><span class="rico" style="background:${rcol(r.type)}">${esc(t.l)}</span><b style="font-size:19px">${esc(t.n)}</b></div><div class="small">${esc(r.label||'')}<br>Signalé ${ago(r.at)}${r.by?' par '+esc(r.by):''}${r.conf?' · confirmé '+r.conf+' fois':''}${r.local?' · envoi en attente':''}</div>${r.note?`<p style="margin:0">${esc(r.note)}</p>`:''}<div class="btnrow"><button class="btn" id="repConfirm">Toujours là</button><button class="btn primary" id="repResolve">C'est réglé</button></div><div class="btnrow"><button class="btn" id="repClose">Fermer</button></div></div>`}
+  return`<div class="card"><div class="lbl">Signalements en cours</div>${act.length?`<ul class="rlist">${act.sort((a,b)=>b.at-a.at).map(r=>`<li data-rid="${esc(r.id)}"><span class="rico" style="background:${rcol(r.type)}">${esc((RT[r.type]||RT.autre).l)}</span><span class="grow"><b>${esc((RT[r.type]||RT.autre).n)}</b><br><span class="small">${esc(r.label||'')} · ${ago(r.at)}</span></span></li>`).join('')}</ul>`:'<p class="note">Aucun signalement en cours.</p>'}<div class="btnrow"><button class="btn primary" id="repNewBtn">Signaler</button><button class="btn" id="repClose">Fermer</button></div></div>`}
+function wireRep(on){const keep=()=>{const n=$('#repNote');if(n)repDraft.note=n.value};
+  document.querySelectorAll('[data-rt]').forEach(b=>b.onclick=()=>{keep();repDraft.type=b.dataset.rt;renderSheet()});
+  on('repPlace',()=>{keep();state.pick='rep';state.sheet=null;renderSheet();setHint('Touche l\'endroit du problème')});
+  on('repHere',()=>{keep();repDraft.at=state.from;state.sel=null;renderSheet();draw()});
+  on('repSend',()=>{keep();repSend()});on('repCancel',()=>{state.sheet=null;state.sel=null;renderSheet();draw()});
+  on('repSeeAll',()=>{keep();state.sheet='repList';renderSheet()});on('repNewBtn',()=>repOpen(null));
+  on('repClose',()=>{state.sheet=null;state.repSel=null;renderSheet();draw()});
+  on('repConfirm',()=>repAct('confirm'));on('repResolve',()=>repAct('resolve'));
+  document.querySelectorAll('[data-rid]').forEach(li=>li.onclick=()=>{const r=repActive().find(x=>x.id===li.dataset.rid);if(!r)return;state.repSel=r.id;state.sheet='rep';renderSheet();requestAnimationFrame(()=>fit(r.x-10,r.y-10,r.x+10,r.y+10,10))})}
+function repSend(){const at=repDraft.at,k=repDraft.type;if(!at||!k)return;const A=acct.who(),now=Date.now(),ttl=RT[k].ttl*3600e3;
+  const r={id:'s'+now.toString(36)+Math.random().toString(36).slice(2,6),type:k,x:at.x,y:at.y,label:at.kind==='cell'&&!/^(Allée|Près)/.test(at.label)?nearLabel(at.x,at.y):at.label,note:repDraft.note.trim().slice(0,140),ttl};
+  REP.list.push(Object.assign({by:A?A.display||A.name:'',at:now,exp:now+ttl,conf:0,local:true},r));REP.pend.push(Object.assign({action:'report'},r));repSave();
+  state.sheet=null;state.sel=null;renderSheet();repChanged();flash('Signalement envoyé, merci !');repFlush()}
+function repAct(action){const r=REP.list.find(x=>x.id===state.repSel);if(!r)return;const ttl=(RT[r.type]||RT.autre).ttl*3600e3;
+  if(action==='resolve'){REP.list=REP.list.filter(x=>x!==r);state.sheet=null;state.repSel=null}else{r.conf=(r.conf||0)+1;r.exp=Math.max(r.exp||0,Date.now()+ttl)}
+  REP.pend.push({action,id:r.id,ttl});repSave();renderSheet();repChanged();flash(action==='resolve'?'Merci, signalement retiré pour tout le monde.':'Merci, signalement confirmé.');repFlush()}
+function repApply(res){if(!res||!res.ok)return;if(res.same){REP.ver=res.ver;return}
+  const pend=new Set(REP.pend.filter(o=>o.action==='report').map(o=>o.id)),gone=new Set(REP.pend.filter(o=>o.action==='resolve').map(o=>o.id));
+  REP.list=(res.reports||[]).filter(r=>!gone.has(r.id)).concat(REP.list.filter(r=>r.local&&pend.has(r.id)));REP.ver=res.ver;repSave();repChanged();
+  if(state.sheet==='rep'||state.sheet==='repList')renderSheet()}
+async function repFlush(){const A=acct.who();if(repFlushing||!A)return;repFlushing=true;
+  try{while(REP.pend.length){const res=await acct.call(Object.assign({name:A.name,hash:A.hash},REP.pend[0]));if(!res.ok&&(res.error==='action'||res.error==='server')){REP.off=true;break}REP.pend.shift();repSave();if(res.ok){REP.off=false;repApply(res)}}}
+  catch(e){/* pas de réseau : on réessaiera à la prochaine actualisation */}finally{repFlushing=false}}
+async function repPull(force){if(document.hidden&&!force)return;REP.t=Date.now();if(REP.pend.length)await repFlush();
+  try{const res=await acct.call({action:'reports',since:REP.ver});if(res.ok){REP.off=false;repApply(res)}else REP.off=true}catch(e){}
+  repChanged()}
+setInterval(()=>repPull(),180000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-REP.t>170000)repPull()});
+addEventListener('online',()=>repPull(true));
+$('#repBtn').onclick=()=>repOpen(state.sel&&state.sel.kind?state.sel:null);
 
 
 const retheme=()=>{if(G){buildBase();draw()}};
@@ -730,7 +822,7 @@ load().then(()=>{
   const sf=store.get('from',null);let f=null;
   if(sf){if(sf.kind==='loc'){const o=LOCS.find(o=>o.id===sf.ref);if(o)f=T.loc(o)}else if(sf.kind==='quai'){const q=QUAIS.find(q=>q.id===sf.ref);if(q)f=T.quai(q)}else if(sf.kind==='poi'){const p=POIS.find(p=>p.id===sf.ref)||PRINTERS.find(p=>p.id===sf.ref);if(p)f=T.poi(p)}else if(sf.kind==='cell')f=T.cell(sf.x,sf.y,sf.label)}
   state.from=f||T.start();$('#fromLbl').textContent=state.from.label;
-  renderPois();
+  renderPois();repChanged();repPull(true);
   if(vw){needFit=false;fitAll()}
   }).catch(e=>{$('#sheet').innerHTML='<div class="card"><b>Le plan n\'a pas pu être chargé.</b><span class="small">Recharge la page.</span></div>';console.error(e)});
 })();
@@ -740,7 +832,7 @@ load().then(()=>{
 <script>
 /* Mises à jour automatiques : à l'ouverture et à chaque retour sur l'appli, on vérifie version.json.
    Si une nouvelle version existe, le service worker l'installe et la page se recharge (le chrono et les données sont conservés). */
-(()=>{const APP_VERSION='202611260954';if(!('serviceWorker' in navigator))return;
+(()=>{const APP_VERSION='202611261010';if(!('serviceWorker' in navigator))return;
   let reloading=false;const hadCtrl=!!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloading||!hadCtrl)return;reloading=true;try{sessionStorage.setItem('gp_upd','1')}catch(e){}location.reload()});
   try{if(sessionStorage.getItem('gp_upd')){sessionStorage.removeItem('gp_upd');const t=document.getElementById('updToast');t.hidden=false;setTimeout(()=>t.hidden=true,3000)}}catch(e){}
