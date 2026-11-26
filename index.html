@@ -267,21 +267,37 @@ async function load(){
   d.locs.forEach((l,i)=>{const[id,x,y,dyn]=l;const p=id.split('-');const o={id,x,y,dyn:!!dyn,zone:p[0],aisle:p[0]+'-'+p[1],pos:p[2],n:id.replace(/[^A-Z0-9]/g,'')};LOCS.push(o);LOC_AT[y*W+x]=i;
     let a=AISLES.get(o.aisle);if(!a){a={id:o.aisle,minx:1e9,miny:1e9,maxx:-1,maxy:-1,locs:[]};AISLES.set(o.aisle,a)}a.locs.push(o);a.minx=Math.min(a.minx,x);a.maxx=Math.max(a.maxx,x);a.miny=Math.min(a.miny,y);a.maxy=Math.max(a.maxy,y);
     let z=ZONES.get(o.zone);if(!z){z={sx:0,sy:0,n:0};ZONES.set(o.zone,z)}z.sx+=x;z.sy+=y;z.n++;});
+  buildOneWay();
   QUAIS=d.quais.map(([id,x,y])=>({id,num:parseInt(id,10),x,y}));
   PRINTERS=(d.printers||[]).map((p,i)=>Object.assign({id:'imp'+i,type:'imprimante',fixed:true},p)).concat((d.fixed||[]).map((p,i)=>Object.assign({id:'fix'+i,fixed:true},p)));
 }
 
+/* Sens de circulation en serpent : dans chaque zone, allée impaire dans un sens, allée paire dans l'autre.
+   Allées verticales (A, B, C, E, K) : impaire du haut vers le bas, paire du bas vers le haut.
+   Allées horizontales (F, G, I, J) : impaire de la gauche vers la droite, paire de la droite vers la gauche.
+   Seul le couloir entre les deux rangées de racks est à sens unique ; les allées transversales restent libres.
+   ONEWAY[cellule] : 0 libre, 1 vers le bas, 2 vers le haut, 3 vers la droite, 4 vers la gauche. */
+let ONEWAY;
+function buildOneWay(){ONEWAY=new Uint8Array(W*H);
+  for(const a of AISLES.values()){const num=parseInt(a.id.split('-')[1],10);if(!num)continue;const odd=num%2===1;
+    const xs=new Set(a.locs.map(l=>l.x)),ys=new Set(a.locs.map(l=>l.y));const w=a.maxx-a.minx,h=a.maxy-a.miny;let dir=0,cells=[];
+    if(h>w&&w>=2&&xs.size<=3){dir=odd?1:2;for(let x=a.minx+1;x<a.maxx;x++)if(!xs.has(x))for(let y=a.miny;y<=a.maxy;y++)cells.push(y*W+x)}
+    else if(w>h&&h>=2&&ys.size<=3){dir=odd?3:4;for(let y=a.miny+1;y<a.maxy;y++)if(!ys.has(y))for(let x=a.minx;x<=a.maxx;x++)cells.push(y*W+x)}
+    if(!dir)continue;const corr=new Set();for(const i of cells)if(REACH[i]&&!ONEWAY[i]){ONEWAY[i]=dir;corr.add(i)}if(corr.size){a.dir=dir;a.corr=corr}}}
+/* Un emplacement d'une allée à sens unique se prend depuis son couloir (pas depuis l'arrière du rack). */
+const inCorr=(aisle,s)=>{const a=AISLES.get(aisle);if(!a||!a.corr)return s;const f=new Set([...s].filter(i=>a.corr.has(i)));return f.size?f:s};
+const against=(o,dx,dy)=>o===1?dy<0:o===2?dy>0:o===3?dx<0:o===4?dx>0:false;
 class Heap{constructor(){this.k=[];this.v=[]}push(k,v){const K=this.k,V=this.v;let i=K.length;K.push(k);V.push(v);while(i>0){const p=(i-1)>>1;if(K[p]<=k)break;K[i]=K[p];V[i]=V[p];i=p}K[i]=k;V[i]=v}
 pop(){const K=this.k,V=this.v,top=V[0],lk=K.pop(),lv=V.pop(),n=K.length;if(n){let i=0;while(true){let l=2*i+1,r=l+1,m=i,mk=lk;if(l<n&&K[l]<mk){m=l;mk=K[l]}if(r<n&&K[r]<mk){m=r;mk=K[r]}if(m===i)break;K[i]=K[m];V[i]=V[m];i=m}K[i]=lk;V[i]=lv}return top}get size(){return this.k.length}}
 const DIRS=[[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,Math.SQRT2],[1,-1,Math.SQRT2],[-1,1,Math.SQRT2],[-1,-1,Math.SQRT2]];
 function dijkstra(src,goals){const dist=new Float32Array(W*H).fill(Infinity),prev=new Int32Array(W*H).fill(-1),h=new Heap();dist[src]=0;h.push(0,src);let hit=-1;
   while(h.size){const i=h.pop();if(goals&&goals.has(i)){hit=i;break}const di=dist[i],x=i%W,y=(i/W)|0;
-    for(const[dx,dy,c]of DIRS){const a=x+dx,b=y+dy;if(a<0||b<0||a>=W||b>=H)continue;const j=b*W+a;if(!REACH[j])continue;if(dx&&dy&&(!REACH[y*W+a]||!REACH[b*W+x]))continue;const nd=di+c;if(nd<dist[j]){dist[j]=nd;prev[j]=i;h.push(nd,j)}}}
+    for(const[dx,dy,c]of DIRS){const a=x+dx,b=y+dy;if(a<0||b<0||a>=W||b>=H)continue;const j=b*W+a;if(!REACH[j])continue;if(dx&&dy&&(!REACH[y*W+a]||!REACH[b*W+x]))continue;if(against(ONEWAY[i],dx,dy)||against(ONEWAY[j],dx,dy))continue;const nd=di+c;if(nd<dist[j]){dist[j]=nd;prev[j]=i;h.push(nd,j)}}}
   return{dist,prev,hit}}
 function goalsAround(x,y){const s=new Set();if(x>=0&&y>=0&&x<W&&y<H&&REACH[y*W+x]){s.add(y*W+x);return s}
   for(let r=1;r<=4&&!s.size;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;if(r===1&&dx&&dy)continue;const a=x+dx,b=y+dy;if(a<0||b<0||a>=W||b>=H)continue;if(REACH[b*W+a])s.add(b*W+a)}
   if(!s.size)for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const a=x+dx,b=y+dy;if(a>=0&&b>=0&&a<W&&b<H&&REACH[b*W+a])s.add(b*W+a)}return s}
-function goalsOf(t){if(t.goals)return t.goals;let s;if(t.kind==='aisle'){s=new Set();for(const l of AISLES.get(t.ref).locs)for(const g of goalsAround(l.x,l.y))s.add(g)}else s=goalsAround(t.x,t.y);t.goals=s;return s}
+function goalsOf(t){if(t.goals)return t.goals;let s;if(t.kind==='aisle'){s=new Set();for(const l of AISLES.get(t.ref).locs)for(const g of goalsAround(l.x,l.y))s.add(g);s=inCorr(t.ref,s)}else{s=goalsAround(t.x,t.y);if(t.kind==='loc')s=inCorr(t.ref.split('-').slice(0,2).join('-'),s)}t.goals=s;return s}
 function cellOf(t){if(REACH[t.y*W+t.x])return t.y*W+t.x;let best=-1,bd=1e9;for(const j of goalsOf(t)){const d=Math.hypot(j%W-t.x,((j/W)|0)-t.y);if(d<bd){bd=d;best=j}}return best}
 function route(a,b){const src=cellOf(a);if(src<0)return null;const goals=goalsOf(b);if(goals.has(src))return{cells:[src],len:0};const{dist,prev,hit}=dijkstra(src,goals);if(hit<0)return null;const cells=[];for(let i=hit;i>=0;i=prev[i])cells.push(i);cells.reverse();return{cells,len:dist[hit]}}
 function simplify(c){if(c.length<3)return c.slice();const o=[c[0]];for(let k=1;k<c.length-1;k++){const a=c[k-1],b=c[k],d=c[k+1];if(b-a!==d-b)o.push(b)}o.push(c[c.length-1]);return o}
@@ -328,6 +344,7 @@ const sx=x=>(x-view.x)*view.s, sy=y=>(y-view.y)*view.s;
 function render(){raf=0;if(!base)return;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle=colors.bg;ctx.fillRect(0,0,vw,vh);
   ctx.imageSmoothingEnabled=false;ctx.drawImage(base,sx(0),sy(0),W*view.s,H*view.s);const s=view.s;
   ctx.textAlign='center';ctx.textBaseline='middle';
+  if(s>=2.5)drawArrows(s);
   if(s<5){ctx.font=`700 ${Math.max(18,s*9)}px "Barlow Condensed",sans-serif`;for(const[z,o]of ZONES){const x=sx(o.sx/o.n+.5),y=sy(o.sy/o.n+.5);ctx.lineWidth=4;ctx.strokeStyle=colors.floor;ctx.strokeText(z,x,y);ctx.fillStyle=colors.fg;ctx.fillText(z,x,y)}}
   else{ctx.font=`700 ${Math.min(16,s*1.6)}px "Barlow Condensed",sans-serif`;for(const a of AISLES.values()){const x=sx((a.minx+a.maxx)/2+.5),y=sy(a.maxy+1.6);if(x<-40||x>vw+40||y<-20||y>vh+20)continue;ctx.lineWidth=3;ctx.strokeStyle=colors.floor;ctx.strokeText(a.id,x,y);ctx.fillStyle=colors.fg;ctx.fillText(a.id,x,y)}}
   if(s>=16){ctx.font=`600 ${Math.min(11,s*.38)}px "IBM Plex Mono",monospace`;ctx.fillStyle=colors.fg;const x0=Math.max(0,Math.floor(view.x)),y0=Math.max(0,Math.floor(view.y)),x1=Math.min(W,Math.ceil(view.x+vw/s)),y1=Math.min(H,Math.ceil(view.y+vh/s));
@@ -344,6 +361,12 @@ function render(){raf=0;if(!base)return;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fi
   const f=tour?tour.from:state.from;if(f){const x=sx(f.x+.5),y=sy(f.y+.5);ctx.beginPath();ctx.arc(x,y,9,0,7);ctx.fillStyle=colors.panel;ctx.fill();ctx.lineWidth=4;ctx.strokeStyle=colors.route;ctx.stroke()}
   if(geo.pos){const x=sx(geo.pos.x+.5),y=sy(geo.pos.y+.5);ctx.beginPath();ctx.arc(x,y,Math.max(10,geo.pos.acc*s),0,7);ctx.globalAlpha=.15;ctx.fillStyle=colors.me;ctx.fill();ctx.globalAlpha=1;ctx.beginPath();ctx.arc(x,y,7,0,7);ctx.fillStyle=colors.me;ctx.fill();ctx.lineWidth=3;ctx.strokeStyle='#fff';ctx.stroke()}
 }
+/* Flèches de sens de circulation, régulièrement espacées dans le couloir de chaque allée */
+function drawArrows(s){const sz=Math.min(10,Math.max(4,s*.9)),step=Math.max(8,Math.round(60/s));ctx.save();ctx.fillStyle=colors.muted;ctx.globalAlpha=.75;
+  for(const a of AISLES.values()){if(!a.dir)continue;const v=a.dir<=2,sg=a.dir===1||a.dir===3?1:-1;const cx=(a.minx+a.maxx+1)/2,cy=(a.miny+a.maxy+1)/2;
+    const L=v?a.maxy-a.miny:a.maxx-a.minx;for(let t=step/2;t<L;t+=step){const x=sx(v?cx:a.minx+t+.5),y=sy(v?a.miny+t+.5:cy);if(x<-20||x>vw+20||y<-20||y>vh+20)continue;
+      ctx.save();ctx.translate(x,y);ctx.rotate(v?(sg>0?Math.PI/2:-Math.PI/2):(sg>0?0:Math.PI));ctx.beginPath();ctx.moveTo(sz,0);ctx.lineTo(-sz*.7,-sz*.75);ctx.lineTo(-sz*.3,0);ctx.lineTo(-sz*.7,sz*.75);ctx.closePath();ctx.fill();ctx.restore()}}
+  ctx.restore()}
 function pin(cx,cy,col,letter){const x=sx(cx+.5),y=sy(cy+.5);ctx.save();ctx.translate(x,y);ctx.beginPath();ctx.moveTo(0,0);ctx.bezierCurveTo(-4,-8,-12,-13,-12,-22);ctx.arc(0,-22,12,Math.PI,0);ctx.bezierCurveTo(12,-13,4,-8,0,0);ctx.fillStyle=col;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=colors.panel;ctx.stroke();
   ctx.fillStyle='#fff';if(letter){ctx.font='700 13px "Barlow",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(letter,0,-22)}else{ctx.beginPath();ctx.arc(0,-22,4.5,0,7);ctx.fill()}ctx.restore()}
 function numPin(cx,cy,n,done,cur){const x=sx(cx+.5),y=sy(cy+.5),r=cur?13:10;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fillStyle=done?colors.muted:cur?colors.accent:colors.route;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=colors.panel;ctx.stroke();ctx.fillStyle=cur?'#1d1600':'#fff';ctx.font=`700 ${cur?13:11}px "Barlow",sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(n,x,y+.5)}
@@ -615,7 +638,7 @@ load().then(()=>{
 <script>
 /* Mises à jour automatiques : à l'ouverture et à chaque retour sur l'appli, on vérifie version.json.
    Si une nouvelle version existe, le service worker l'installe et la page se recharge (le chrono et les données sont conservés). */
-(()=>{const APP_VERSION='202611251507';if(!('serviceWorker' in navigator))return;
+(()=>{const APP_VERSION='202611260802';if(!('serviceWorker' in navigator))return;
   let reloading=false;const hadCtrl=!!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloading||!hadCtrl)return;reloading=true;try{sessionStorage.setItem('gp_upd','1')}catch(e){}location.reload()});
   try{if(sessionStorage.getItem('gp_upd')){sessionStorage.removeItem('gp_upd');const t=document.getElementById('updToast');t.hidden=false;setTimeout(()=>t.hidden=true,3000)}}catch(e){}
