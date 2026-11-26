@@ -1,6 +1,6 @@
 // Mise à jour automatique : ce fichier change à chaque nouvelle version (VERSION),
 // le navigateur installe alors la nouvelle version et l'appli se recharge toute seule.
-const VERSION='202611261010';
+const VERSION='202611261029';
 const C='prepa-'+VERSION;
 const FILES=['./','./index.html','./entrepot.json','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(FILES.map(f=>new Request(f,{cache:'reload'})))));self.skipWaiting()});

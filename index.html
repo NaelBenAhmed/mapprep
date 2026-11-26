@@ -121,6 +121,29 @@ details.settings summary{cursor:pointer;font-weight:700;color:var(--muted);font-
 .setgrid{display:grid;grid-template-columns:1fr 110px;gap:8px;align-items:center;margin-top:10px}
 .setgrid .inp{padding:8px 10px;font-size:16px}
 nav.tabbar{grid-template-columns:repeat(4,1fr)!important}
+/* Fenêtre modale (aide, lecteur de badge) */
+.modal{position:fixed;inset:0;z-index:200;background:rgb(0 0 0/.55);display:flex;align-items:flex-end;justify-content:center;padding:12px;padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+@media (min-width:700px){.modal{align-items:center}}
+.mbox{position:relative;width:100%;max-width:520px;max-height:88vh;overflow:auto;background:var(--panel);border-radius:18px;padding:18px 16px 16px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow)}
+.mclose{position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);font-size:16px}
+.mtitle{font-family:var(--f-display);font-size:26px;margin:0 44px 0 0;text-transform:uppercase;letter-spacing:.02em}
+.mbox details{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--panel2)}
+.mbox summary{cursor:pointer;font-weight:700;font-size:16px}
+.mbox details p,.mbox details ul{margin:8px 0 0;font-size:15px} .mbox details ul{padding-left:20px}
+.scanbox{position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3}
+.scanbox video{width:100%;height:100%;object-fit:cover;display:block}
+.scanline{position:absolute;left:10%;right:10%;top:50%;height:2px;background:var(--bad);box-shadow:0 0 8px var(--bad)}
+.qbtn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--panel);font-weight:800;font-size:18px;flex:none;color:var(--fg)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:4px}
+.seg button{border:0;background:none;border-radius:9px;padding:9px 4px;font-weight:700;font-size:15px}
+.seg button[aria-pressed="true"]{background:var(--panel);box-shadow:0 1px 4px rgb(0 0 0/.15)}
+.near{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:8px}
+.near .row{display:flex;align-items:center;gap:8px}
+.near .row .grow{flex:1;min-width:0}
+.acc{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.acc li{background:var(--panel2);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px}
+.acc .top{display:flex;align-items:center;gap:8px;cursor:pointer}
+.acc .top .grow{flex:1;min-width:0}
 /* Signalements participatifs */
 .fab button.repfab{background:var(--warn);color:#fff;border-color:transparent;position:relative}
 .rcount{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--bad);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;border:2px solid var(--panel)}
@@ -192,6 +215,7 @@ details.fold textarea.inp{min-height:90px}
 </style>
 
 <div id="gate" hidden><div class="gbox"><p class="glogo">Guide Préparateur</p><p class="gsub">Connecte-toi pour accéder à l'appli.</p><div class="card" id="gateCard"></div></div></div>
+<div id="modal" class="modal" hidden role="dialog" aria-modal="true"><div class="mbox"><button class="mclose" id="mClose" aria-label="Fermer">✕</button><div id="mBody"></div></div></div>
 <div class="app">
 <main>
   <section class="view" id="vPlan" hidden>
@@ -207,6 +231,7 @@ details.fold textarea.inp{min-height:90px}
     <div class="hint" id="hint" hidden></div>
     <div class="fab" id="fab">
       <button id="repBtn" class="repfab" aria-label="Signaler une anomalie" title="Signaler une anomalie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17v.5" stroke-linecap="round"/></svg><span class="rcount" id="repCount" hidden></span></button>
+      <button data-help="Plan" aria-label="Comment ça marche ?" title="Comment ça marche ?">?</button>
       <button id="locBtn" aria-label="Me localiser" title="Me localiser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
       <button id="zin" aria-label="Zoomer">+</button>
       <button id="zout" aria-label="Dézoomer">−</button>
@@ -218,9 +243,9 @@ details.fold textarea.inp{min-height:90px}
   <section class="view scroll" id="vProd" hidden>
     <div class="wrap">
       <div id="prodStart" class="card">
-        <div class="lbl">Type de mission</div>
+        <div class="hrow"><div class="lbl">Type de mission</div><button class="qbtn" data-help="Prod" aria-label="Comment ça marche ?">?</button></div>
         <div class="types" id="types"></div>
-        <div class="field" id="autreF" hidden><label class="lbl" for="autreLbl">Préciser la mission</label><input class="inp" id="autreLbl" placeholder="Ex. inventaire, réception, nettoyage" enterkeyhint="go" maxlength="40"></div>
+        <div class="field" id="autreF" hidden><label class="lbl" for="autreSel">Tâche annexe</label><select class="inp" id="autreSel"></select><input class="inp" id="autreLbl" placeholder="Préciser la tâche" enterkeyhint="go" maxlength="40" hidden><div class="small">Début : <b id="annexStart">--:--</b> (automatique, à l'appui sur Démarrer). L'heure de fin se renseigne à la fin.</div></div>
         <div class="field" id="colisF"><label class="lbl" for="nColis">Nombre de colis</label><input class="inp bigin" id="nColis" type="number" min="1" inputmode="numeric" pattern="[0-9]*" placeholder="0" enterkeyhint="go"></div>
         <div class="planned" id="planned">&nbsp;</div>
         <button class="btn primary xl" id="startBtn">Démarrer</button>
@@ -240,8 +265,9 @@ details.fold textarea.inp{min-height:90px}
 
   <section class="view scroll" id="vProfil" hidden>
     <div class="wrap">
-      <h1 class="title">Profil</h1>
+      <div class="hrow"><h1 class="title">Profil</h1><button class="qbtn" data-help="Profil" aria-label="Comment ça marche ?">?</button></div>
       <div class="card" id="acctCard"></div>
+      <div class="card" id="adminCard" hidden></div>
       <div class="weeknav"><button id="wPrev" aria-label="Semaine précédente">‹</button><b id="wLbl"></b><button id="wNext" aria-label="Semaine suivante">›</button></div>
       <div class="days" id="days"></div>
       <div class="card" id="dayCard"></div>
@@ -253,6 +279,7 @@ details.fold textarea.inp{min-height:90px}
         <button class="btn" id="planRead">Lire le planning</button>
         <div id="planOut"></div>
       </details>
+      <div class="card"><div class="lbl">Apparence</div><div class="seg" id="themeSeg"><button data-th="auto">Auto</button><button data-th="light">Clair</button><button data-th="dark">Sombre</button></div></div>
       <details class="card fold"><summary>Réglages</summary><div class="setgrid" id="setgrid"></div></details>
       <details class="card fold"><summary>Repères du plan</summary>
         <p class="note">Les imprimantes sont déjà sur le plan. Ajoute ici les filmeuses, chargeurs… Place-les en touchant le plan, ils deviennent cherchables.</p>
@@ -288,7 +315,7 @@ function show(v){curView=v;document.querySelectorAll('nav.tabbar button').forEac
 document.querySelectorAll('nav.tabbar button').forEach(b=>b.onclick=()=>show(b.dataset.v));
 
 let W,H,G,REACH,LOCS=[],LOC_AT,AISLES=new Map(),ZONES=new Map(),QUAIS=[],START0;
-const POI_TYPES={imprimante:'Imprimante',filmeuse:'Filmeuse',chargeur:'Chargeur',bureau:'Bureau chef d\'équipe',pause:'Salle de pause',vestiaire:'Vestiaires / WC',dechets:'Déchets / cartons',autre:'Autre'};
+const POI_TYPES={imprimante:'Imprimante',filmeuse:'Filmeuse',depalettiseur:'Dépalettiseur',chargeur:'Chargeur',bureau:'Bureau chef d\'équipe',pause:'Salle de pause',vestiaire:'Vestiaires / WC',dechets:'Déchets / cartons',autre:'Autre'};
 let POIS=store.get('pois',[]),PRINTERS=[];
 async function load(){
   const d=await (await fetch('entrepot.json')).json();
@@ -306,8 +333,16 @@ async function load(){
     let z=ZONES.get(o.zone);if(!z){z={sx:0,sy:0,n:0};ZONES.set(o.zone,z)}z.sx+=x;z.sy+=y;z.n++;});
   buildOneWay();
   QUAIS=d.quais.map(([id,x,y])=>({id,num:parseInt(id,10),x,y}));
-  PRINTERS=(d.printers||[]).map((p,i)=>Object.assign({id:'imp'+i,type:'imprimante',fixed:true},p)).concat((d.fixed||[]).map((p,i)=>Object.assign({id:'fix'+i,fixed:true},p)));
+  BASE_PTS=(d.printers||[]).map((p,i)=>Object.assign({id:'imp'+i,type:'imprimante',fixed:true},p)).concat((d.fixed||[]).map((p,i)=>Object.assign({id:'fix'+i,fixed:true},p)));
+  applyPlan();
 }
+/* Repères communs : ceux du fichier du plan, plus les modifications des administrateurs (onglet « Plan » du Sheet),
+   récupérées avec les signalements toutes les 3 minutes. */
+let BASE_PTS=[],SHARED=store.get('plan',[]);
+const shortOf=r=>r.type==='imprimante'?(String(r.name).match(/\d+/)||['I'])[0].slice(0,2):r.type==='depalettiseur'?'D':r.type==='filmeuse'?'F':(POI_TYPES[r.type]||'?')[0];
+function applyPlan(){const by=new Map(SHARED.map(r=>[r.id,r]));
+  PRINTERS=BASE_PTS.filter(p=>!(by.get(p.id)||{}).deleted).map(p=>{const r=by.get(p.id);return r?Object.assign({},p,{x:r.x,y:r.y,name:r.name||p.name,sub:r.sub||p.sub,type:r.type||p.type,edited:true}):p})
+    .concat(SHARED.filter(r=>!r.deleted&&!BASE_PTS.some(p=>p.id===r.id)).map(r=>({id:r.id,type:r.type,name:r.name,sub:r.sub,x:r.x,y:r.y,fixed:true,shared:true,short:shortOf(r)})))}
 
 /* Sens de circulation en serpent : dans chaque zone, allée impaire dans un sens, allée paire dans l'autre.
    Allées verticales (A, B, C, E, K) : impaire du haut vers le bas, paire du bas vers le haut.
@@ -352,7 +387,7 @@ const T={
 const BADGE={loc:'Empl.',aisle:'Allée',quai:'Quai',poi:'Repère',cell:'Point',start:'Départ'};
 function search(qRaw,max=8){
   const q=strip(qRaw.trim());if(!q)return[];const res=[];const qn=q.replace(/[^A-Z0-9]/g,'');
-  if(/^DEP/.test(q)||q.startsWith('ZONE DE D'))res.push(T.start());
+  if(/^DEP(?!AL)/.test(q)||q.startsWith('ZONE DE D'))res.push(T.start());
   const mq=q.match(/^(?:Q|QUAI)\s*0*(\d{1,3})$/)||(/^\d{1,3}$/.test(q)&&q.match(/^0*(\d{1,3})$/));
   if(mq){const n=parseInt(mq[1],10);[...QUAIS.filter(x=>x.num===n),...QUAIS.filter(x=>x.num!==n&&String(x.num).startsWith(String(n)))].slice(0,5).forEach(x=>res.push(T.quai(x)))}
   let key=qn;const m=q.match(/^([A-Z])\W*(\d{1,2})(?:\W+(\d{1,3}))?\W*$/);
@@ -370,7 +405,7 @@ const parseOne=s=>search(s,1)[0]||null;
 
 const cv=$('#map'),ctx=cv.getContext('2d');let base=null,dpr=1,vw=0,vh=0;
 const view={s:3,x:0,y:0};let colors={};
-function readColors(){const cs=getComputedStyle(document.documentElement);for(const k of['floor','rack','wall','quai','poi','sel','route','route-case','fg','muted','panel','bad','accent','bg','me'])colors[k]=cs.getPropertyValue('--'+k).trim()}
+function readColors(){const cs=getComputedStyle(document.documentElement);for(const k of['floor','rack','wall','quai','poi','sel','route','route-case','fg','muted','panel','bad','accent','bg','me','warn','good'])colors[k]=cs.getPropertyValue('--'+k).trim()}
 function buildBase(){readColors();base=document.createElement('canvas');base.width=W;base.height=H;const b=base.getContext('2d');const img=b.createImageData(W,H);
   const hex=h=>{const c=document.createElement('canvas').getContext('2d');c.fillStyle=h;c.fillRect(0,0,1,1);return c.getImageData(0,0,1,1).data};
   const fl=hex(colors.floor),rk=hex(colors.rack),wl=hex(colors.wall),out=hex(colors.bg);
@@ -389,7 +424,7 @@ function render(){raf=0;if(!base)return;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fi
   if(s>=16){ctx.font=`600 ${Math.min(11,s*.38)}px "IBM Plex Mono",monospace`;ctx.fillStyle=colors.fg;const x0=Math.max(0,Math.floor(view.x)),y0=Math.max(0,Math.floor(view.y)),x1=Math.min(W,Math.ceil(view.x+vw/s)),y1=Math.min(H,Math.ceil(view.y+vh/s));
     for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const li=LOC_AT[y*W+x];if(li>=0)ctx.fillText(LOCS[li].pos,sx(x+.5),sy(y+.5))}}
   if(s>=7){ctx.font=`700 ${Math.min(12,s*.5)}px "Barlow",sans-serif`;ctx.fillStyle=colors.quai;for(const q of QUAIS){const x=sx(q.x+.5),y=sy(q.y+.5);if(x<-20||x>vw+20||y<-20||y>vh+20)continue;ctx.fillText(q.id,x+(q.x>=W-2?-s*1.6:0),y+(q.x>=W-2?0:(q.y>100?s*1.2:-s*1.2)))}}
-  for(const p of PRINTERS)pin(p.x,p.y,p.type==='imprimante'?colors.quai:colors.poi,p.short);
+  for(const p of PRINTERS)pin(p.x,p.y,p.type==='imprimante'?colors.quai:p.type==='depalettiseur'?colors.good:colors.poi,p.short||shortOf(p));
   for(const p of POIS)pin(p.x,p.y,colors.poi,(POI_TYPES[p.type]||'?')[0]);
   drawReports();
   const paths=tour?tour.legs.map((l,i)=>({cells:l.cells,dim:i!==tour.cur})):(state.route?[{cells:state.route.cells}]:[]);
@@ -434,6 +469,7 @@ function setHint(t){$('#hint').hidden=!t;$('#hint').textContent=t||''}
 function onMapTap(x,y){if(x<0||y<0||x>=W||y>=H)return;
   if(state.pick==='from'){const t=targetAt(x,y)||T.cell(x,y);state.pick=null;setHint('');state.sheet=null;setFrom(t,true);return}
   if(state.pick==='poi'){state.pick=null;setHint('');openPoiSheet(x,y);return}
+  if(state.pick==='pmove'){state.pick=null;setHint('');Object.assign(PE,{x,y});state.sel={x,y};state.sheet='pedit';renderSheet();draw();return}
   if(state.pick==='rep'){state.pick=null;setHint('');repDraft.at=targetAt(x,y)||T.cell(x,y,nearLabel(x,y));state.sel=repDraft.at;state.sheet='repNew';renderSheet();draw();return}
   if(tour)return;
   const rp=repAt(x,y);if(rp){state.repSel=rp.id;state.sel=null;state.sheet='rep';renderSheet();draw();return}
@@ -450,12 +486,13 @@ function renderSheet(){const el=$('#sheet');let h='';
     <div class="btnrow"><button class="btn blue" id="whereGps">Utiliser le GPS</button><button class="btn" id="whereTap">Toucher le plan</button></div><div class="btnrow"><button class="btn" id="whereStart">Zone de départ</button><button class="btn" id="whereClose">Fermer</button></div><p class="note" id="whereMsg">${esc(geo.status())}</p></div>`}
   else if(state.sheet==='poi'){h=poiSheetHtml}
   else if(state.sheet==='repNew'||state.sheet==='rep'||state.sheet==='repList'){h=repSheetHtml()}
+  else if(state.sheet==='pedit'){h=pEditHtml()}
   else if(state.sheet==='msg'){h=`<div class="card"><p class="note" style="font-size:15px">${esc(state.msg||'')}</p><div class="btnrow"><button class="btn" id="msgClose">Fermer</button></div></div>`}
   else if(tour){const st=tour.stops[tour.cur];const done=tour.stops.filter(s=>s.done).length;const leg=tour.legs[tour.cur];
     if(st)h=`<div class="card"><div class="lbl">Tournée · arrêt ${tour.cur+1} sur ${tour.stops.length}</div><div class="rhead"><span class="big code" style="font-size:30px">${esc(st.t.label)}</span><span class="small">${leg?fmtTime(leg.len)+' · '+Math.round(leg.len)+' m':''}</span></div><div class="chips">${details(st.t)}</div><div class="btnrow"><button class="btn primary" id="stopDone">Pris, arrêt suivant</button></div><div class="btnrow"><button class="btn" id="tourList">Liste (${done}/${tour.stops.length})</button><button class="btn" id="tourQuit">Arrêter</button></div><div id="tourListBox" hidden></div></div>`;
     else h=`<div class="card"><div class="lbl">Tournée terminée</div><div class="rhead"><span class="big">${tour.stops.length} arrêts faits</span></div>${tour.end?`<div class="small">Dernier trajet vers <b>${esc(tour.end.label)}</b> affiché.</div>`:''}<div class="btnrow"><button class="btn primary" id="tourQuit">Fermer la tournée</button></div></div>`}
-  else if(state.sheet==='sel'&&state.sel){const t=state.sel;h=`<div class="card"><div><span class="badge ${t.kind}">${BADGE[t.kind]}</span> <span class="code" style="font-size:18px">${esc(t.label)}</span></div><div class="chips">${details(t)}</div><div class="btnrow"><button class="btn primary" id="selTo">Y aller</button><button class="btn" id="selFrom">Je suis ici</button></div><button class="btn" id="selRep">Signaler un problème ici</button></div>`}
-  else if(state.to){const r=state.route;h=r?`<div class="card"><div class="rhead"><span class="big">${fmtTime(r.len)}</span><span class="small">${Math.round(r.len*CELL_M)} m à pied</span></div><div><span class="badge ${state.to.kind}">${BADGE[state.to.kind]}</span> <span class="code" style="font-size:18px">${esc(state.to.label)}</span></div><div class="chips">${details(state.to)}</div><div class="btnrow"><button class="btn primary" id="arrived">Je suis arrivé</button><button class="btn" id="routeClose" style="flex:0 0 auto">Fermer</button></div></div>`:`<div class="card"><b>Pas d'itinéraire trouvé.</b><span class="small">Indique où tu es avec « Où suis-je ? ».</span></div>`}
+  else if(state.sheet==='sel'&&state.sel){const t=state.sel;h=`<div class="card"><div><span class="badge ${t.kind}">${BADGE[t.kind]}</span> <span class="code" style="font-size:18px">${esc(t.label)}</span></div><div class="chips">${details(t)}</div><div class="btnrow"><button class="btn primary" id="selTo">Y aller</button><button class="btn" id="selFrom">Je suis ici</button></div>${t.kind==='quai'?nearHtml(t):''}<button class="btn" id="selRep">Signaler un problème ici</button>${isAdmin()?`<button class="btn" id="selAdm">${t.kind==='poi'&&PRINTERS.some(p=>p.id===t.ref)?'Modifier ce repère (admin)':'Ajouter un repère commun ici (admin)'}</button>`:''}</div>`}
+  else if(state.to){const r=state.route;h=r?`<div class="card"><div class="rhead"><span class="big">${fmtTime(r.len)}</span><span class="small">${Math.round(r.len*CELL_M)} m à pied</span></div><div><span class="badge ${state.to.kind}">${BADGE[state.to.kind]}</span> <span class="code" style="font-size:18px">${esc(state.to.label)}</span></div><div class="chips">${details(state.to)}</div>${state.to.kind==='quai'?nearHtml(state.to):''}<div class="btnrow"><button class="btn primary" id="arrived">Je suis arrivé</button><button class="btn" id="routeClose" style="flex:0 0 auto">Fermer</button></div></div>`:`<div class="card"><b>Pas d'itinéraire trouvé.</b><span class="small">Indique où tu es avec « Où suis-je ? ».</span></div>`}
   el.innerHTML=h;wireSheet();requestAnimationFrame(()=>{const c=$('#sheet .card');$('#fab').style.bottom=(c?c.getBoundingClientRect().height+20:12)+'px'})}
 function wireSheet(){const on=(id,f)=>{const b=document.getElementById(id);if(b)b.onclick=f};
   on('arrived',()=>{const t=state.to;state.to=null;$('#to').value='';state.sheet=null;setFrom(t,true)});
@@ -470,6 +507,8 @@ function wireSheet(){const on=(id,f)=>{const b=document.getElementById(id);if(b)
   on('whereStart',()=>{state.sheet=null;setFrom(T.start(),false)});on('whereClose',()=>{state.sheet=null;renderSheet()});
   if($('#whereIn'))auto($('#whereIn'),$('#whereRes'),t=>{state.sheet=null;setFrom(t,true)});
   on('selRep',()=>repOpen(state.sel));wireRep(on);
+  on('selAdm',()=>{const t=state.sel,p=t.kind==='poi'&&PRINTERS.find(p=>p.id===t.ref);pEditOpen(p?{id:p.id,type:p.type,name:p.name,sub:p.sub||'',x:p.x,y:p.y,isNew:false}:{id:null,type:'filmeuse',name:'',sub:'',x:t.x,y:t.y,isNew:true})});wirePEdit(on);
+  document.querySelectorAll('[data-ngo]').forEach(b=>b.onclick=()=>{const n=NEAR_LAST[+b.dataset.ngo];if(n){tour=null;setTo(n.t)}});
   on('poiSave',savePoiFromSheet);on('poiCancel',()=>{state.sheet=null;state.sel=null;renderSheet();draw()});
   if($('#poiType')){const sync=()=>{if(!$('#poiName').dataset.t)$('#poiName').value=POI_TYPES[$('#poiType').value]};sync();$('#poiType').onchange=sync;$('#poiName').oninput=()=>$('#poiName').dataset.t=1}
 }
@@ -544,25 +583,32 @@ const fh=m=>Math.floor(m/60)+'h'+pad(m%60);
 const fc=s=>{const neg=s<0,a=Math.abs(s),h=Math.floor(a/3600),m=Math.floor(a%3600/60);return(neg?'+':'')+(h?h+':'+pad(m):m)+':'+pad(a%60)};
 const nameOf=f=>f==='autre'?'Autre':(FM.find(m=>m[0]===f)||['',f])[1];
 const hOf=x=>x.f==='autre'?(x.min||0)/60:x.n/S.set.rate[x.f];
-const mLabel=x=>x.f==='autre'?esc(x.label||'Autre')+' · '+fd(x.min||1):nameOf(x.f)+' '+f0(x.n)+' · '+fd(x.n/S.set.rate[x.f]*60);
+const mLabel=x=>x.f==='autre'?esc(x.label||'Autre')+(x.start?' · '+x.start+'–'+x.end:'')+' · '+fd(x.min||1):nameOf(x.f)+' '+f0(x.n)+' · '+fd(x.n/S.set.rate[x.f]*60);
 const dh=k=>{const x=S.hrs[k];return x>0?x:S.set.h};
 function calc(k){const e=S.data[k]||[];let h=0,c=0;e.forEach(x=>{h+=hOf(x);if(x.f!=='autre')c+=x.n});return{h,c,e}}
 
 /* --- Onglet Prod : type + colis + chrono --- */
-function renderTypes(){$('#types').innerHTML=FM.map(([k,n])=>`<button aria-pressed="${S.fmt===k}" data-f="${k}">${n}<small>${S.set.rate[k]} colis/h</small></button>`).join('')+`<button aria-pressed="${S.fmt==='autre'}" data-f="autre">Autre<small>à préciser</small></button>`;$('#types').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.fmt=b.dataset.f;saveS();renderTypes();planned()})}
-function planned(){const au=S.fmt==='autre';$('#autreF').hidden=!au;$('#colisF').hidden=au;if(au){const l=$('#autreLbl').value.trim();$('#planned').textContent='Le chrono compte ton temps, il sera ajouté à ta journée.';$('#startBtn').disabled=!l;return}const n=parseInt($('#nColis').value,10);$('#planned').innerHTML=n>0?`Temps prévu : <b>${fd(n/S.set.rate[S.fmt]*60)}</b>`:'&nbsp;';$('#startBtn').disabled=!(n>0)}
+function renderTypes(){$('#types').innerHTML=FM.map(([k,n])=>`<button aria-pressed="${S.fmt===k}" data-f="${k}">${n}<small>${S.set.rate[k]} colis/h</small></button>`).join('')+`<button aria-pressed="${S.fmt==='autre'}" data-f="autre">Annexe<small>tâche hors quota</small></button>`;$('#types').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.fmt=b.dataset.f;saveS();renderTypes();planned()})}
+function planned(){const au=S.fmt==='autre';$('#autreF').hidden=!au;$('#colisF').hidden=au;if(au){$('#annexStart').textContent=hm(new Date());$('#planned').innerHTML='&nbsp;';$('#startBtn').disabled=!annexLabel();return}const n=parseInt($('#nColis').value,10);$('#planned').innerHTML=n>0?`Temps prévu : <b>${fd(n/S.set.rate[S.fmt]*60)}</b>`:'&nbsp;';$('#startBtn').disabled=!(n>0)}
 $('#nColis').addEventListener('input',planned);$('#autreLbl').addEventListener('input',planned);$('#autreLbl').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#startBtn').click()}});
 $('#nColis').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#startBtn').click()}});
 let AC=null,WL=null;
-$('#startBtn').onclick=()=>{if(S.fmt==='autre'){const l=$('#autreLbl').value.trim();if(!l||TM)return;TM={f:'autre',label:l,up:true,start:Date.now(),acc:0,run:true};saveT();$('#autreLbl').value='';$('#autreLbl').blur();renderProd();return}const n=parseInt($('#nColis').value,10);if(!(n>0)){$('#nColis').focus();return}if(TM)return;
+$('#startBtn').onclick=()=>{if(S.fmt==='autre'){const l=annexLabel();if(!l||TM)return;TM={f:'autre',label:l,up:true,start:Date.now(),acc:0,run:true};saveT();$('#autreLbl').value='';$('#autreLbl').hidden=true;$('#autreSel').value='';$('#autreLbl').blur();renderProd();return}const n=parseInt($('#nColis').value,10);if(!(n>0)){$('#nColis').focus();return}if(TM)return;
   try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();AC.resume()}catch(e){}
   const s=Math.max(1,Math.round(n/S.set.rate[S.fmt]*3600));TM={n,f:S.fmt,total:s,end:Date.now()+s*1000,run:true,beeped:false};
   (S.data[todayK()]=S.data[todayK()]||[]).push({f:S.fmt,n});saveS();saveT();$('#nColis').value='';$('#nColis').blur();planned();renderProd()};
 const tLeft=()=>!TM?0:TM.up?Math.round((TM.acc+(TM.run?Date.now()-TM.start:0))/1000):TM.run?Math.round((TM.end-Date.now())/1000):TM.left;
 function renderTimer(){const box=$('#timerBox');$('#prodStart').hidden=!!TM;if(!TM){box.innerHTML='';wake(false);return}const l=tLeft();
-  if(TM.up){box.innerHTML=`<div class="card tcard"><div class="tinfo">Autre · ${esc(TM.label)}</div><div class="small" style="text-align:center">Temps passé</div><div class="timer huge" id="tm">${fc(l)}</div><div class="small" style="text-align:center" id="tl">${TM.run?'En cours':'En pause'}</div><div class="btnrow"><button class="btn" id="tPause">${TM.run?'Pause':'Reprendre'}</button><button class="btn primary" id="tStop">Mission finie</button></div></div>`;
-    $('#tPause').onclick=()=>{if(TM.run){TM.acc+=Date.now()-TM.start;TM.run=false}else{TM.start=Date.now();TM.run=true}saveT();renderTimer()};
-    $('#tStop').onclick=()=>{const min=Math.max(1,Math.round(tLeft()/60));(S.data[todayK()]=S.data[todayK()]||[]).push({f:'autre',label:TM.label,min});TM=null;saveS();saveT();renderProd()};wake(TM.run);return}
+  if(TM.up){const st=new Date(TM.t0||TM.start);TM.t0=TM.t0||TM.start;
+    box.innerHTML=`<div class="card tcard"><div class="tinfo">Tâche annexe · ${esc(TM.label)}</div><div class="small" style="text-align:center">Commencée à <b>${hm(st)}</b></div><div class="timer huge" id="tm">${fc(l)}</div>
+      <div class="hrow"><label for="tEnd"><b>Heure de fin</b></label><div style="display:flex;gap:6px"><input class="inp" id="tEnd" type="time" value="${TM.endV||''}" style="width:130px"><button class="btn" id="tNow" style="padding:8px 10px">Maintenant</button></div></div>
+      <p class="note" id="tMsg"></p><div class="btnrow"><button class="btn" id="tCancel">Annuler la tâche</button><button class="btn primary" id="tStop">Valider la fin</button></div></div>`;
+    $('#tEnd').onchange=e=>{TM.endV=e.target.value;saveT()};$('#tNow').onclick=()=>{$('#tEnd').value=hm(new Date());TM.endV=$('#tEnd').value;saveT()};
+    $('#tCancel').onclick=()=>{if($('#tCancel').dataset.ask){TM=null;saveT();renderProd()}else{$('#tCancel').dataset.ask=1;$('#tCancel').textContent='Confirmer l\'annulation'}};
+    $('#tStop').onclick=()=>{const v=$('#tEnd').value;if(!/^\d{1,2}:\d{2}$/.test(v)){$('#tMsg').textContent='Renseigne l\'heure de fin (ou appuie sur « Maintenant »).';$('#tEnd').focus();return}
+      const[hh,mm]=v.split(':').map(Number),end=new Date(st);end.setHours(hh,mm,0,0);if(end<=st)end.setDate(end.getDate()+1);const min=Math.round((end-st)/60000);
+      if(min<1||min>16*60){$('#tMsg').textContent='Heure de fin incohérente avec le début ('+hm(st)+').';return}
+      const k=iso(st);(S.data[k]=S.data[k]||[]).push({f:'autre',label:TM.label,min,start:hm(st),end:v});TM=null;saveS();saveT();renderProd()};wake(false);return}
   box.innerHTML=`<div class="card tcard${l<=0?' late':''}"><div class="tinfo">${nameOf(TM.f)} · ${f0(TM.n)} colis</div><div class="small" style="text-align:center">Temps prévu ${fd(TM.total/60)}</div><div class="timer huge${l<=0?' over':''}" id="tm">${fc(l)}</div><div class="small" style="text-align:center" id="tl">${l<=0?'Temps dépassé':TM.run?'Temps restant':'En pause'}</div><div class="btnrow"><button class="btn" id="tPause">${TM.run?'Pause':'Reprendre'}</button><button class="btn primary" id="tStop">Mission finie</button></div></div>`;
   $('#tPause').onclick=()=>{if(TM.run){TM.left=tLeft();TM.run=false}else{TM.end=Date.now()+TM.left*1000;TM.run=true}saveT();renderTimer()};
   $('#tStop').onclick=()=>{TM=null;saveT();renderProd()};wake(TM.run)}
@@ -608,7 +654,7 @@ function renderProfil(){
   $('#monthCard').innerHTML=`<div class="lbl">Mois de ${mn}</div><div class="kpis"><div class="kpi"><b>${Math.round(mavg*100)} %</b><span>rendement</span></div><div class="kpi"><b>${ms.n}</b><span>jours</span></div><div class="kpi"><b>${mg>=0?'+':''}${f2(mg)} h</b><span>écart à 100 %</span></div></div>
     <p class="note">La prime demande une moyenne de 100 % ou plus sur tous les jours travaillés du mois. Heures travaillées : ${f2(ms.W)} h${ms.OT>0?' (dont '+f2(ms.OT)+' h supplémentaires)':''}.</p>
     ${ms.n?`<div><span class="pill${mavg>=1?' ok':''}">${mavg>=1?'Au standard pour l\'instant : prime de '+f2(S.set.prime||0)+' €':'Sous le standard pour l\'instant ('+Math.round(mavg*100)+' %)'}</span></div>`:''}`;
-  renderSettings();
+  renderSettings();renderAdmin();
 }
 function renderSettings(){const g=$('#setgrid');if(g.dataset.ok)return;g.dataset.ok=1;
   g.innerHTML=`<label for="s_h">Heures par jour</label><input class="inp" id="s_h" type="number" step="0.25" inputmode="decimal" value="${S.set.h}"><label for="s_d">Jours par semaine</label><input class="inp" id="s_d" type="number" inputmode="numeric" value="${S.set.d}"><label for="s_pz">Pause déduite d'un planning (min)</label><input class="inp" id="s_pz" type="number" inputmode="numeric" value="${S.set.pause==null?30:S.set.pause}"><label for="s_p">Prime (€)</label><input class="inp" id="s_p" type="number" inputmode="decimal" value="${S.set.prime||0}">`+FM.map(([k,n])=>`<label for="r_${k}">${n} (colis/h)</label><input class="inp" id="r_${k}" type="number" inputmode="numeric" value="${S.set.rate[k]}">`).join('');
@@ -634,7 +680,9 @@ const SENS_TXT={1:'du haut vers le bas',2:'du bas vers le haut',3:'de la gauche 
 const ENTREE_TXT={1:'entre par le haut, sors par le bas',2:'entre par le bas, sors par le haut',3:'entre par la gauche, sors par la droite',4:'entre par la droite, sors par la gauche'};
 const HOWTO=[
   {k:/(DEMARR|LANCER|COMMENCER|NOUVELLE).*MISSION|MISSION.*(DEMARR|LANCER|COMMENC)|COMMENT.*CHRONO/,a:'<p>Pour démarrer une mission :</p><ul><li>Va dans l\'onglet <b>Prod</b>.</li><li>Choisis le type (Hyper, Market, Proxi, Carton, Cash).</li><li>Tape le nombre de colis : le temps prévu s\'affiche.</li><li>Appuie sur <b>Démarrer</b>. Le chrono sonne et vibre quand le temps est écoulé.</li></ul>',go:'Prod'},
-  {k:/MISSION AUTRE|AUTRE MISSION|\bAUTRE\b.*(MISSION|TYPE)|INVENTAIRE|RECEPTION|NETTOYAGE/,a:'<p>Pour une tâche hors quota (inventaire, réception, nettoyage…) : dans <b>Prod</b>, choisis <b>Autre</b>, précise la mission puis démarre. Le chrono compte ton temps et l\'ajoute à ta journée.</p>',go:'Prod'},
+  {k:/ANNEXE|MISSION AUTRE|AUTRE MISSION|\bAUTRE\b.*(MISSION|TYPE)|INVENTAIRE|RECEPTION|NETTOYAGE|HORS QUOTA/,a:'<p>Pour une tâche hors quota : dans <b>Prod</b>, choisis <b>Annexe</b> puis la tâche dans la liste (réception, inventaire, nettoyage…). L\'heure de début est prise automatiquement quand tu démarres ; à la fin, renseigne l\'heure de fin et valide. Le temps passé s\'ajoute à ta journée.</p>',go:'Prod'},
+  {k:/BADGE|CODE.?BARRE|SCANNER/,a:'<p>Tu peux te connecter en <b>scannant ton badge</b> sur l\'écran de connexion. Un badge inconnu crée ton compte (indique juste ton nom). Si tu as déjà un compte : Profil › « Associer mon badge ».</p>',go:'Profil'},
+  {k:/THEME|MODE (SOMBRE|CLAIR|NUIT)|SOMBRE|CLAIR/,a:'<p>Dans <b>Profil › Apparence</b>, choisis Auto (selon le téléphone), Clair ou Sombre.</p>',go:'Profil'},
   {k:/PAUSE|ARRETER LE CHRONO|STOPPER|MISSION FINIE|TERMINER/,a:'<p>Pendant une mission, le chrono a deux boutons : <b>Pause</b> (puis Reprendre) et <b>Mission finie</b>. Les colis sont comptés dès le démarrage.</p>'},
   {k:/REPERE|AJOUTER.*(FILMEUSE|CHARGEUR|POINT)|PLACER/,a:'<p>Pour ajouter un repère (filmeuse, chargeur, bureau…) : <b>Profil › Repères du plan › Ajouter un repère sur le plan</b>, puis touche l\'endroit sur le plan. Il devient cherchable.</p>',go:'Profil'},
   {k:/PLANNING|HORAIRE|EMPLOI DU TEMPS/,a:'<p>Dans <b>Profil › Planning de la semaine</b>, colle ton planning (ex. « Lundi : 6h00-13h30 »). L\'appli lit les horaires, retire la pause et remplit les heures de chaque jour.</p>',go:'Profil'},
@@ -666,8 +714,9 @@ function answer(raw){const q=strip(raw).replace(/[’']/g,"'").replace(/\s+/g,' 
   if(/SIGNALEMENT|ANOMALIE|PROBLEME|INCIDENT|\bHS\b|PANNE|FLAQUE|BLOQUE|DANGER|OBSTACLE/.test(q)){const act=repActive().sort((a,b)=>b.at-a.at);if(!act.length)return{h:'<p>Aucun signalement en cours. Tu as vu un problème ? Signale-le.</p>',a:[{label:'Signaler',fn:()=>repOpen(null)}]};
     return{h:`<p>${act.length} signalement${act.length>1?'s':''} en cours :</p><ul>${act.slice(0,8).map(r=>`<li><b>${esc((RT[r.type]||RT.autre).n)}</b> · ${esc(r.label||'')} · ${ago(r.at)}</li>`).join('')}</ul>`,a:[{label:'Voir sur le plan',fn:()=>{show('Plan');state.sheet='repList';renderSheet()}},{label:'Signaler',fn:()=>repOpen(null)}]}}
   // Imprimante / filmeuse la plus proche
-  const nt=/FILMEUSE/.test(q)?'filmeuse':/IMPRIM|PRINT/.test(q)?'imprimante':null;
-  if(nt&&/PROCHE|PRES|COTE|PROXIMIT|PLUS PRES|LA OU/.test(q)){const t=nearest(nt);if(!t)return{h:nt==='filmeuse'?'<p>Aucune filmeuse n\'est sur le plan pour l\'instant. Tu peux l\'ajouter dans Profil › Repères du plan.</p>':'<p>Je ne trouve pas d\'imprimante sur le plan.</p>'};return{h:`<p>${nt==='filmeuse'?'La filmeuse':'L\'imprimante'} la plus proche est <b>${esc(t.label)}</b>.</p>${distTxt(t)}`,a:[goBtn(t)]}}
+  if(/COMMENT (CA )?(MARCHE|FONCTIONNE)|EXPLIQU|MODE D'EMPLOI|TUTO/.test(q))return{h:'<p>La fenêtre « Comment ça marche » explique tout le système : missions, plan, sens de circulation, signalements, assistant, profil et badge.</p>',a:[{label:'Ouvrir l\'explication',fn:()=>openHelp(curView)}]};
+  const nt=/FILMEUSE/.test(q)?'filmeuse':/DEPAL/.test(q)?'depalettiseur':/IMPRIM|PRINT/.test(q)?'imprimante':null;
+  if(nt&&/PROCHE|PRES|COTE|PROXIMIT|PLUS PRES|LA OU/.test(q)){const t=nearest(nt);if(!t)return{h:`<p>Aucun(e) ${esc(POI_TYPES[nt].toLowerCase())} disponible sur le plan (ou tous signalés HS).</p>`};return{h:`<p>${nt==='filmeuse'?'La filmeuse':nt==='depalettiseur'?'Le dépalettiseur':'L\'imprimante'} ${nt==='depalettiseur'?'le':'la'} plus proche est <b>${esc(t.label)}</b>.</p>${distTxt(t)}`,a:[goBtn(t)]}}
   // Sens de circulation
   const ai=aisleIn(q);
   if(/SENS|CIRCUL|SERPENT|DIRECTION|CONTRE.?SENS|PAR OU (ENTRER|RENTRER|PASSER)|ENTRER|RENTRER/.test(q)){
@@ -691,7 +740,7 @@ function answer(raw){const q=strip(raw).replace(/[’']/g,"'").replace(/\s+/g,' 
     const a=ai.aisle,t=T.aisle(a);return{h:`<p>Allée <b>${esc(a.id)}</b> : ${a.locs.length} emplacements.</p><p class="small">${sensTxt(a)}</p>${distTxt(t)}`,a:[goBtn(t)]}}
   const z=zoneOf(q);if(z){const as=[...AISLES.values()].filter(a=>a.id[0]===z);return{h:`<p>Zone <b>${z}</b> : ${as.length} allées (${as.map(a=>a.id).join(', ')}), ${f0(as.reduce((s,a)=>s+a.locs.length,0))} emplacements.</p>`}}
   // Quai, imprimante, repère : recherche du plan
-  const mq=q.match(/QUAI\s*(?:N\W?\s*)?0*(\d{1,3})/);if(mq){const r=search('quai '+mq[1],1)[0];if(r)return{h:`<p><b>${esc(r.label)}</b> trouvé.</p>${distTxt(r)}`,a:[goBtn(r)]};return{h:`<p>Je ne trouve pas le quai ${esc(mq[1])}. Les quais vont de ${QUAIS.reduce((m,x)=>Math.min(m,x.num),999)} à ${QUAIS.reduce((m,x)=>Math.max(m,x.num),0)}.</p>`}}
+  const mq=q.match(/QUAI\s*(?:N\W?\s*)?0*(\d{1,3})/);if(mq){const r=search('quai '+mq[1],1)[0];if(r){const nr=nearFrom(r);return{h:`<p><b>${esc(r.label)}</b> trouvé.</p>${distTxt(r)}${nr.length?`<p>Au plus près de ce quai :</p><ul>${nr.map(n=>`<li>${esc(n.t.label)} · ${Math.round(n.len)} m</li>`).join('')}</ul>`:''}`,a:[goBtn(r)].concat(nr.slice(0,2).map(n=>({label:n.t.label.replace(/^Imprimante /,'Imp. '),fn:()=>{tour=null;show('Plan');setTo(n.t)}})))}}return{h:`<p>Je ne trouve pas le quai ${esc(mq[1])}. Les quais vont de ${QUAIS.reduce((m,x)=>Math.min(m,x.num),999)} à ${QUAIS.reduce((m,x)=>Math.max(m,x.num),0)}.</p>`}}
   const words=q.replace(/\b(OU|EST|SE|TROUVE|LA|LE|LES|L'|UN|UNE|DE|DU|DES|C'EST|ALLER|VA|JE|VEUX|CHERCHE|TROUVER|EMMENE|MOI|STP|SVP|S'IL|TE|PLAIT|IL|Y|A|AU|QUEL|QUELLE|COMMENT|\?|!)\b/g,' ').replace(/\s+/g,' ').trim();
   if(words.length>=2){const r=search(words,4).filter(t=>t.kind==='poi'||t.kind==='quai'||t.kind==='start');if(r.length){const t=r[0];return{h:`<p><b>${esc(t.label)}</b>${t.sub?' · '+esc(t.sub):''}</p>${distTxt(t)}${r.length>1?`<p class="small">Aussi : ${r.slice(1).map(x=>esc(x.label)).join(', ')}.</p>`:''}`,a:[goBtn(t)]}}}
   if(/^(DEP|DEPART|ZONE DE DEPART)/.test(words))return{h:'<p>La zone de départ préparation est le point de départ par défaut.</p>',a:[goBtn(T.start())]};
@@ -706,10 +755,50 @@ function chatAsk(t){t=String(t).trim().slice(0,200);if(!t)return;CHAT.push({me:1
 function chatOpen(){chatRender()}
 $('#chatForm').addEventListener('submit',e=>{e.preventDefault();const i=$('#chatIn');chatAsk(i.value);i.value=''});
 
+/* --- Fenêtre (modale) réutilisable : aide « ? » et lecteur de badge --- */
+let modalClose=null;
+function openModal(html,onClose){$('#mBody').innerHTML=html;$('#modal').hidden=false;modalClose=onClose||null;$('#mClose').focus()}
+function closeModal(silent){$('#modal').hidden=true;$('#mBody').innerHTML='';const f=modalClose;modalClose=null;if(!silent&&f)f()}
+$('#mClose').onclick=()=>closeModal();$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#modal').hidden)closeModal()});
+
+/* Lecteur de code-barre : BarcodeDetector (Android/Chrome), sinon la bibliothèque ZXing chargée
+   une seule fois à la demande (iPhone). Toujours possible de taper le numéro du badge à la main. */
+let zxingP=null;
+const loadZxing=()=>zxingP||(zxingP=new Promise((ok,ko)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';s.onload=()=>window.ZXing?ok():ko();s.onerror=()=>{zxingP=null;ko()};document.head.appendChild(s)}));
+function scanCode(title){return new Promise(res=>{let stream=null,timer=0,reader=null,fin=false;
+  const stop=()=>{clearInterval(timer);try{reader&&reader.reset()}catch(e){}if(stream)stream.getTracks().forEach(t=>t.stop());stream=null};
+  const done=v=>{if(fin)return;fin=true;stop();closeModal(true);res(v?String(v).trim()||null:null)};
+  openModal(`<h2 class="mtitle">${esc(title)}</h2><div class="scanbox"><video id="scanV" playsinline muted autoplay></video><div class="scanline"></div></div><p class="note" id="scanMsg">Ouverture de la caméra…</p>
+    <label class="lbl" for="scanTxt">Ou tape le numéro écrit sous le code-barre</label><div class="btnrow"><input class="inp" id="scanTxt" autocomplete="off" enterkeyhint="go" style="flex:2;min-width:0"><button class="btn primary" id="scanOk" style="flex:1">Valider</button></div>`,()=>{fin=true;stop();res(null)});
+  $('#scanOk').onclick=()=>{const v=$('#scanTxt').value.trim();if(v)done(v)};$('#scanTxt').onkeydown=e=>{if(e.key==='Enter')$('#scanOk').click()};
+  const msg=t=>{const m=$('#scanMsg');if(m)m.textContent=t};
+  (async()=>{const v=$('#scanV');if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){msg('Caméra indisponible ici : tape le numéro du badge.');return}
+    try{let fm=[];if('BarcodeDetector' in window)try{fm=await BarcodeDetector.getSupportedFormats()}catch(e){}
+      if(fm.length){const det=new BarcodeDetector({formats:fm});stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});if(fin){stop();return}v.srcObject=stream;await v.play();msg('Place le code-barre du badge dans le cadre.');
+        timer=setInterval(async()=>{try{const c=await det.detect(v);if(c.length&&c[0].rawValue)done(c[0].rawValue)}catch(e){}},250)}
+      else{msg('Chargement du lecteur…');await loadZxing();if(fin)return;reader=new ZXing.BrowserMultiFormatReader();msg('Place le code-barre du badge dans le cadre.');
+        await reader.decodeFromConstraints({video:{facingMode:'environment'}},v,r=>{if(r)done(r.getText())});if(fin)stop()}}
+    catch(e){msg(e&&e.name==='NotAllowedError'?'Caméra refusée : autorise-la dans les réglages du téléphone, ou tape le numéro du badge.':'Caméra indisponible : tape le numéro du badge.')}})()})}
+
 /* --- Compte : nom + mot de passe, données synchronisées dans le Google Sheet « MapPrep – Comptes » --- */
 var acct=(()=>{const ENDPOINT='https://script.google.com/macros/s/AKfycbwUik2hqOs-tCVCFRxaV_5yoNcrxfdrEymwrDhJdc6y3WlTyLSVAAf-mJvukF9aztbWag/exec';
   let A=store.get('acct',null),timer=null,busy=false,again=false,msg='',err='';
-  const ERR={exists:'Ce nom est déjà pris.',unknown:'Aucun compte à ce nom.',password:'Mot de passe incorrect.',missing:'Indique un nom et un mot de passe.',too_big:'Trop de données à envoyer.'};
+  const ERR={exists:'Ce nom est déjà pris.',unknown:'Aucun compte à ce nom.',password:'Mot de passe incorrect.',missing:'Indique un nom et un mot de passe.',too_big:'Trop de données à envoyer.',badge_used:'Ce badge est déjà associé à un autre compte.',action:'Le serveur n\'est pas encore à jour pour les badges.'};
+  let pendingBadge=null;
+  // Badge : on n'envoie jamais le code lui-même, seulement son empreinte.
+  async function bhash(code){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('mapprep-badge|'+String(code).trim()));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+  async function badgeFlow(){const code=await scanCode('Scanne ton badge');if(!code)return;err='';msg='Connexion…';render(true);
+    try{const r=await call({action:'badge_login',badge:await bhash(code)});
+      if(r.ok){A={name:r.name,display:r.name,hash:r.hash,updated:r.updated,synced:Date.now(),admin:!!r.admin,badge:true};if(r.data&&r.data.quota)apply(r.data);msg='Connecté avec ton badge.';save();render();return}
+      if(r.error!=='no_badge')throw r.error;pendingBadge=code;msg=''}catch(e){err=ERR[e]||'Connexion impossible. Vérifie le réseau.';msg=''}render()}
+  async function badgeRegister(){const n=$('#acBName').value.trim();if(!n){err='Indique ton prénom et ton nom.';render();return}const code=pendingBadge;$('#acBGo').disabled=true;err='';msg='Création du compte…';render(true);
+    try{const h=await hash(n,'badge:'+code),up=Date.now();const r=await call({action:'register',name:n,hash:h,badge:await bhash(code),data:payload(),updated:up});if(!r.ok)throw r.error;
+      A={name:n.toLowerCase(),display:n,hash:h,updated:up,synced:Date.now(),admin:!!r.admin,badge:true};pendingBadge=null;msg='Compte créé. La prochaine fois, scanne juste ton badge.';save()}
+    catch(e){err=ERR[e]||'Création impossible. Vérifie le réseau.';msg=''}render()}
+  async function linkBadge(){const code=await scanCode('Scanne ton badge');if(!code)return;
+    try{const r=await call({action:'link_badge',name:A.name,hash:A.hash,badge:await bhash(code)});if(!r.ok)throw r.error;A.badge=true;save();msg='Badge associé : tu peux maintenant te connecter en le scannant.';err=''}
+    catch(e){err=ERR[e]||'Association impossible pour l\'instant.'}render()}
   async function hash(n,p){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('mapprep|'+n.trim().toLowerCase()+'|'+p));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
   async function call(o){const r=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(o),redirect:'follow'});return r.json()}
   const cut=()=>iso(new Date(Date.now()-150*864e5));
@@ -722,20 +811,25 @@ var acct=(()=>{const ENDPOINT='https://script.google.com/macros/s/AKfycbwUik2hqO
     try{const r=await call({action:'save',name:A.name,hash:A.hash,data:payload(),updated:up});if(r.ok){if(A&&A.updated===up)A.pending=false;if(A){A.synced=Date.now();save()}err=''}else if(r.error==='password'||r.error==='unknown'){err='Ton compte n\'est plus reconnu : reconnecte-toi.';A=null;store.set('acct',null)}else err=ERR[r.error]||'Synchronisation impossible pour l\'instant.'}
     catch(e){err='Pas de réseau : la synchro se fera plus tard.'}busy=false;render();if(again){again=false;push()}}
   async function pull(){if(!A)return;try{const r=await call({action:'login',name:A.name,hash:A.hash});if(!r.ok){if(r.error==='password'||r.error==='unknown'){A=null;store.set('acct',null);err='Ton compte n\'est plus reconnu : reconnecte-toi.'}render();return}
+      A.admin=!!r.admin;if(r.badge!==undefined)A.badge=!!r.badge;
       if(r.updated>(A.updated||0)&&!A.pending){apply(r.data);A.updated=r.updated}else if(A.pending||(A.updated||0)>r.updated){A.pending=true;push()}A.synced=Date.now();save();err=''}catch(e){err='Pas de réseau : la synchro se fera plus tard.'}render()}
   async function connect(isNew){const n=$('#acName').value.trim(),p=$('#acPwd').value;if(!n||!p){err=ERR.missing;render();return}
     $('#acGo').disabled=$('#acNew').disabled=true;err='';msg=isNew?'Création du compte…':'Connexion…';render(true);
-    try{const h=await hash(n,p);if(isNew){const up=Date.now();const r=await call({action:'register',name:n,hash:h,data:payload(),updated:up});if(!r.ok)throw r.error;A={name:n.toLowerCase(),display:n,hash:h,updated:up,synced:Date.now()};msg='Compte créé. Tes données sont sauvegardées.'}
-      else{const r=await call({action:'login',name:n,hash:h});if(!r.ok)throw r.error;A={name:n.toLowerCase(),display:n,hash:h,updated:r.updated,synced:Date.now()};if(r.data&&r.data.quota)apply(r.data);msg='Connecté. Tes données ont été récupérées.'}save()}
+    try{const h=await hash(n,p);if(isNew){const up=Date.now();const r=await call({action:'register',name:n,hash:h,data:payload(),updated:up});if(!r.ok)throw r.error;A={name:n.toLowerCase(),display:n,hash:h,updated:up,synced:Date.now(),admin:!!r.admin};msg='Compte créé. Tes données sont sauvegardées.'}
+      else{const r=await call({action:'login',name:n,hash:h});if(!r.ok)throw r.error;A={name:n.toLowerCase(),display:n,hash:h,updated:r.updated,synced:Date.now(),admin:!!r.admin,badge:!!r.badge};if(r.data&&r.data.quota)apply(r.data);msg='Connecté. Tes données ont été récupérées.'}save()}
     catch(e){err=ERR[e]||'Connexion impossible. Vérifie le réseau.';msg=''}render()}
   function render(keep){const off=!ENDPOINT||ENDPOINT.startsWith('__');$('#gate').hidden=!!(A||off);const el=A||off?$('#acctCard'):$('#gateCard');if(!el)return;
     if(!A)$('#acctCard').innerHTML='';else $('#gateCard').innerHTML='';
     if(off){el.innerHTML='<div class="lbl">Mon compte</div><p class="note">Les comptes ne sont pas disponibles pour l\'instant.</p>';return}
-    if(A){const t=A.synced?new Date(A.synced).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';el.innerHTML=`<div class="lbl">Mon compte</div><div class="hrow"><b style="font-size:20px">${esc(A.display||A.name)}</b><button class="btn" id="acOut" style="padding:8px 12px">Se déconnecter</button></div><p class="note">${err?esc(err):A.pending?'Synchronisation en attente…':'Données synchronisées'+(t?' à '+t:'')+'. Sur un autre téléphone, connecte-toi avec le même nom et mot de passe.'}</p>${msg?`<p class="note" style="color:var(--good)">${esc(msg)}</p>`:''}`;
-      $('#acOut').onclick=()=>{A=null;store.set('acct',null);msg='';err='';render()};msg='';return}
-    if($('#acName')){const m=$('#acMsg');m.textContent=err||msg;m.style.color=err?'var(--bad)':'';$('#acGo').disabled=$('#acNew').disabled=!!keep;return}
-    el.innerHTML=`<p class="note">Première fois ? Choisis un nom et un mot de passe puis appuie sur « Créer un compte ». Tu retrouveras tes missions sur n'importe quel téléphone.</p><input class="inp" id="acName" autocomplete="username" placeholder="Nom (ex. prénom.nom)"><input class="inp" id="acPwd" type="password" autocomplete="current-password" placeholder="Mot de passe"><div class="btnrow"><button class="btn primary" id="acGo">Se connecter</button><button class="btn" id="acNew">Créer un compte</button></div><p class="note" id="acMsg" style="${err?'color:var(--bad)':''}">${esc(err||msg)}</p>`;
-    $('#acGo').onclick=()=>connect(false);$('#acNew').onclick=()=>connect(true)}
+    if(A){const t=A.synced?new Date(A.synced).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';el.innerHTML=`<div class="lbl">Mon compte</div><div class="hrow"><b style="font-size:20px">${esc(A.display||A.name)}${A.admin?' <span class="chip dyn">Admin</span>':''}</b><button class="btn" id="acOut" style="padding:8px 12px">Se déconnecter</button></div><p class="note">${err?esc(err):A.pending?'Synchronisation en attente…':'Données synchronisées'+(t?' à '+t:'')+'. Sur un autre téléphone, connecte-toi avec '+(A.badge?'ton badge ou ':'')+'le même nom et mot de passe.'}</p>${msg?`<p class="note" style="color:var(--good)">${esc(msg)}</p>`:''}${A.badge?'':'<button class="btn" id="acLink">Associer mon badge</button>'}`;
+      $('#acOut').onclick=()=>{A=null;store.set('acct',null);msg='';err='';render()};const lk=$('#acLink');if(lk)lk.onclick=linkBadge;msg='';if(typeof renderAdmin==='function'&&curView==='Profil')renderAdmin();return}
+    const view=pendingBadge?'badge':'login';
+    if(el.dataset.v===view&&$('#acMsg')){const m=$('#acMsg');m.textContent=err||msg;m.style.color=err?'var(--bad)':'';el.querySelectorAll('button').forEach(b=>b.disabled=!!keep);return}
+    el.dataset.v=view;
+    if(pendingBadge){el.innerHTML=`<div class="lbl">Nouveau badge</div><p class="note">Ce badge n'a pas encore de compte. Indique ton prénom et ton nom pour le créer : ensuite, il suffira de scanner ton badge.</p><input class="inp" id="acBName" autocomplete="name" placeholder="Prénom Nom" enterkeyhint="go"><div class="btnrow"><button class="btn primary" id="acBGo">Créer mon compte</button><button class="btn" id="acBNo">Annuler</button></div><p class="note" id="acMsg" style="${err?'color:var(--bad)':''}">${esc(err||msg)}</p>`;
+      $('#acBGo').onclick=badgeRegister;$('#acBName').onkeydown=e=>{if(e.key==='Enter')badgeRegister()};$('#acBNo').onclick=()=>{pendingBadge=null;err='';msg='';render()};return}
+    el.innerHTML=`<button class="btn primary xl" id="acBadge">Scanner mon badge</button><p class="note" style="text-align:center">ou avec un nom et un mot de passe :</p><input class="inp" id="acName" autocomplete="username" placeholder="Nom (ex. prénom.nom)"><input class="inp" id="acPwd" type="password" autocomplete="current-password" placeholder="Mot de passe"><div class="btnrow"><button class="btn" id="acGo">Se connecter</button><button class="btn" id="acNew">Créer un compte</button></div><p class="note" id="acMsg" style="${err?'color:var(--bad)':''}">${esc(err||msg)}</p>`;
+    $('#acBadge').onclick=badgeFlow;$('#acGo').onclick=()=>connect(false);$('#acNew').onclick=()=>connect(true)}
   addEventListener('online',push);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&A)pull()});
   return{dirty,render,call,who:()=>A,start(){render();if(A&&ENDPOINT&&!ENDPOINT.startsWith('__'))pull()}}})();
 window.acct=acct;acct.start();
@@ -774,12 +868,13 @@ function repOpen(at){if(curView!=='Plan')show('Plan');repDraft={type:null,at:at|
 function repSheetHtml(){const act=repActive();
   if(state.sheet==='repNew'){const at=repDraft.at;return`<div class="card"><div class="lbl">Signaler une anomalie</div><div class="rtypes">${Object.entries(RT).map(([k,t])=>`<button data-rt="${k}" aria-pressed="${repDraft.type===k}"><span class="rico" style="background:${rcol(k)}">${esc(t.l)}</span>${esc(t.n)}</button>`).join('')}</div>
     <div class="small">Lieu : <b>${at?esc(at.label):'à choisir'}</b></div><div class="btnrow"><button class="btn" id="repPlace">Toucher le plan</button>${state.from?'<button class="btn" id="repHere">Ma position</button>':''}</div>
-    <input class="inp" id="repNote" maxlength="140" placeholder="Détail (facultatif)" value="${esc(repDraft.note)}"><div class="btnrow"><button class="btn primary" id="repSend"${repDraft.type&&at?'':' disabled'}>Envoyer</button><button class="btn" id="repCancel">Annuler</button></div>
+    <input class="inp" id="repNote" maxlength="140" placeholder="Détail (facultatif)" value="${esc(repDraft.note)}">
+    ${isAdmin()?`<label class="lbl" for="repDur">Durée (admin)</label><select class="inp" id="repDur">${[['','Par défaut selon le type'],['3600000','1 heure'],['28800000','8 heures'],['86400000','24 heures'],['604800000','7 jours'],['2592000000','30 jours'],['0','Permanent (jusqu\'à « C\'est réglé »)']].map(([v,l])=>`<option value="${v}"${repDraft.dur===v?' selected':''}>${l}</option>`).join('')}</select>`:''}<div class="btnrow"><button class="btn primary" id="repSend"${repDraft.type&&at?'':' disabled'}>Envoyer</button><button class="btn" id="repCancel">Annuler</button></div>
     ${REP.off?'<p class="note">Signalements visibles par toi seul pour l\'instant : le serveur n\'est pas encore à jour. Ils partiront automatiquement.</p>':''}${act.length?`<button class="linkbtn" id="repSeeAll">Voir les ${act.length} signalement${act.length>1?'s':''} en cours</button>`:''}</div>`}
   if(state.sheet==='rep'){const r=act.find(x=>x.id===state.repSel);if(!r)return'<div class="card"><p class="note" style="font-size:15px">Ce signalement a été réglé ou a expiré.</p><div class="btnrow"><button class="btn" id="repClose">Fermer</button></div></div>';const t=RT[r.type]||RT.autre;
     return`<div class="card"><div class="rhead" style="align-items:center"><span class="rico" style="background:${rcol(r.type)}">${esc(t.l)}</span><b style="font-size:19px">${esc(t.n)}</b></div><div class="small">${esc(r.label||'')}<br>Signalé ${ago(r.at)}${r.by?' par '+esc(r.by):''}${r.conf?' · confirmé '+r.conf+' fois':''}${r.local?' · envoi en attente':''}</div>${r.note?`<p style="margin:0">${esc(r.note)}</p>`:''}<div class="btnrow"><button class="btn" id="repConfirm">Toujours là</button><button class="btn primary" id="repResolve">C'est réglé</button></div><div class="btnrow"><button class="btn" id="repClose">Fermer</button></div></div>`}
   return`<div class="card"><div class="lbl">Signalements en cours</div>${act.length?`<ul class="rlist">${act.sort((a,b)=>b.at-a.at).map(r=>`<li data-rid="${esc(r.id)}"><span class="rico" style="background:${rcol(r.type)}">${esc((RT[r.type]||RT.autre).l)}</span><span class="grow"><b>${esc((RT[r.type]||RT.autre).n)}</b><br><span class="small">${esc(r.label||'')} · ${ago(r.at)}</span></span></li>`).join('')}</ul>`:'<p class="note">Aucun signalement en cours.</p>'}<div class="btnrow"><button class="btn primary" id="repNewBtn">Signaler</button><button class="btn" id="repClose">Fermer</button></div></div>`}
-function wireRep(on){const keep=()=>{const n=$('#repNote');if(n)repDraft.note=n.value};
+function wireRep(on){const keep=()=>{const n=$('#repNote');if(n)repDraft.note=n.value;const d=$('#repDur');if(d)repDraft.dur=d.value};
   document.querySelectorAll('[data-rt]').forEach(b=>b.onclick=()=>{keep();repDraft.type=b.dataset.rt;renderSheet()});
   on('repPlace',()=>{keep();state.pick='rep';state.sheet=null;renderSheet();setHint('Touche l\'endroit du problème')});
   on('repHere',()=>{keep();repDraft.at=state.from;state.sel=null;renderSheet();draw()});
@@ -788,19 +883,22 @@ function wireRep(on){const keep=()=>{const n=$('#repNote');if(n)repDraft.note=n.
   on('repClose',()=>{state.sheet=null;state.repSel=null;renderSheet();draw()});
   on('repConfirm',()=>repAct('confirm'));on('repResolve',()=>repAct('resolve'));
   document.querySelectorAll('[data-rid]').forEach(li=>li.onclick=()=>{const r=repActive().find(x=>x.id===li.dataset.rid);if(!r)return;state.repSel=r.id;state.sheet='rep';renderSheet();requestAnimationFrame(()=>fit(r.x-10,r.y-10,r.x+10,r.y+10,10))})}
-function repSend(){const at=repDraft.at,k=repDraft.type;if(!at||!k)return;const A=acct.who(),now=Date.now(),ttl=RT[k].ttl*3600e3;
+function repSend(){const at=repDraft.at,k=repDraft.type;if(!at||!k)return;const A=acct.who(),now=Date.now(),custom=isAdmin()&&repDraft.dur!==undefined&&repDraft.dur!=='',ttl=custom?Number(repDraft.dur):RT[k].ttl*3600e3;
   const r={id:'s'+now.toString(36)+Math.random().toString(36).slice(2,6),type:k,x:at.x,y:at.y,label:at.kind==='cell'&&!/^(Allée|Près)/.test(at.label)?nearLabel(at.x,at.y):at.label,note:repDraft.note.trim().slice(0,140),ttl};
-  REP.list.push(Object.assign({by:A?A.display||A.name:'',at:now,exp:now+ttl,conf:0,local:true},r));REP.pend.push(Object.assign({action:'report'},r));repSave();
+  REP.list.push(Object.assign({by:A?A.display||A.name:'',at:now,exp:now+(ttl||3650*864e5),conf:0,local:true},r));REP.pend.push(Object.assign({action:'report'},r));repSave();
   state.sheet=null;state.sel=null;renderSheet();repChanged();flash('Signalement envoyé, merci !');repFlush()}
 function repAct(action){const r=REP.list.find(x=>x.id===state.repSel);if(!r)return;const ttl=(RT[r.type]||RT.autre).ttl*3600e3;
   if(action==='resolve'){REP.list=REP.list.filter(x=>x!==r);state.sheet=null;state.repSel=null}else{r.conf=(r.conf||0)+1;r.exp=Math.max(r.exp||0,Date.now()+ttl)}
   REP.pend.push({action,id:r.id,ttl});repSave();renderSheet();repChanged();flash(action==='resolve'?'Merci, signalement retiré pour tout le monde.':'Merci, signalement confirmé.');repFlush()}
 function repApply(res){if(!res||!res.ok)return;if(res.same){REP.ver=res.ver;return}
   const pend=new Set(REP.pend.filter(o=>o.action==='report').map(o=>o.id)),gone=new Set(REP.pend.filter(o=>o.action==='resolve').map(o=>o.id));
-  REP.list=(res.reports||[]).filter(r=>!gone.has(r.id)).concat(REP.list.filter(r=>r.local&&pend.has(r.id)));REP.ver=res.ver;repSave();repChanged();
+  REP.list=(res.reports||[]).filter(r=>!gone.has(r.id)).concat(REP.list.filter(r=>r.local&&pend.has(r.id)));REP.ver=res.ver;
+  if(Array.isArray(res.plan)){const pp=REP.pend.filter(o=>o.action==='plan_set').map(planRow);SHARED=res.plan.filter(r=>!pp.some(p=>p.id===r.id)).concat(pp);store.set('plan',SHARED);applyPlan()}
+  repSave();repChanged();
   if(state.sheet==='rep'||state.sheet==='repList')renderSheet()}
 async function repFlush(){const A=acct.who();if(repFlushing||!A)return;repFlushing=true;
-  try{while(REP.pend.length){const res=await acct.call(Object.assign({name:A.name,hash:A.hash},REP.pend[0]));if(!res.ok&&(res.error==='action'||res.error==='server')){REP.off=true;break}REP.pend.shift();repSave();if(res.ok){REP.off=false;repApply(res)}}}
+  try{while(REP.pend.length){const res=await acct.call(Object.assign({name:A.name,hash:A.hash},REP.pend[0]));if(!res.ok&&(res.error==='action'||res.error==='server')){REP.off=true;break}
+      if(!res.ok&&res.error==='forbidden'){const op=REP.pend[0];if(op.action==='plan_set'){SHARED=SHARED.filter(r=>r.id!==op.id);store.set('plan',SHARED);applyPlan();draw()}flash('Action réservée aux administrateurs.')}REP.pend.shift();repSave();if(res.ok){REP.off=false;repApply(res)}}}
   catch(e){/* pas de réseau : on réessaiera à la prochaine actualisation */}finally{repFlushing=false}}
 async function repPull(force){if(document.hidden&&!force)return;REP.t=Date.now();if(REP.pend.length)await repFlush();
   try{const res=await acct.call({action:'reports',since:REP.ver});if(res.ok){REP.off=false;repApply(res)}else REP.off=true}catch(e){}
@@ -809,6 +907,80 @@ setInterval(()=>repPull(),180000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-REP.t>170000)repPull()});
 addEventListener('online',()=>repPull(true));
 $('#repBtn').onclick=()=>repOpen(state.sel&&state.sel.kind?state.sel:null);
+
+/* --- Administrateurs (rôle donné par le serveur, jamais par l'appli seule) --- */
+const isAdmin=()=>{const A=acct.who();return!!(A&&A.admin)};
+const planRow=op=>({id:op.id,type:op.type,name:op.pname,sub:op.sub,x:op.x,y:op.y,deleted:!!op.deleted});
+let PE={};
+const PE_TYPES=['imprimante','filmeuse','depalettiseur','chargeur','bureau','pause','vestiaire','dechets','autre'];
+function pEditOpen(o){if(curView!=='Plan')show('Plan');PE=o;state.sel={x:o.x,y:o.y};state.sheet='pedit';renderSheet();draw()}
+function pEditHtml(){return`<div class="card"><div class="lbl">${PE.isNew?'Nouveau repère commun':'Modifier le repère'} · admin</div>
+  <select class="inp" id="peType">${PE_TYPES.map(k=>`<option value="${k}"${PE.type===k?' selected':''}>${esc(POI_TYPES[k])}</option>`).join('')}</select>
+  <input class="inp" id="peName" maxlength="60" placeholder="Nom (ex. Dépalettiseur H)" value="${esc(PE.name||'')}"><input class="inp" id="peSub" maxlength="80" placeholder="Détail (ex. 2 palettes)" value="${esc(PE.sub||'')}">
+  <div class="small">Position : <b>${esc(nearLabel(PE.x,PE.y))}</b></div>
+  <div class="btnrow"><button class="btn" id="peMove">Déplacer</button>${PE.isNew?'':`<button class="btn" id="peDel" style="color:var(--bad)">${PE.delAsk?'Confirmer la suppression':'Supprimer'}</button>`}</div>
+  <div class="btnrow"><button class="btn primary" id="peSave">Enregistrer pour tous</button><button class="btn" id="peCancel">Annuler</button></div><p class="note">Visible par tout le monde à la prochaine actualisation (3 min max).</p></div>`}
+function wirePEdit(on){const keep=()=>{const t=$('#peType');if(!t)return;PE.type=t.value;PE.name=$('#peName').value.trim();PE.sub=$('#peSub').value.trim()};
+  on('peMove',()=>{keep();state.pick='pmove';state.sheet=null;renderSheet();setHint('Touche le nouvel emplacement')});
+  on('peSave',()=>{keep();if(!PE.name){PE.name=POI_TYPES[PE.type]}planSet(PE,false)});
+  on('peDel',()=>{keep();if(!PE.delAsk){PE.delAsk=true;renderSheet();return}planSet(PE,true)});
+  on('peCancel',()=>{state.sheet=null;state.sel=null;state.pick=null;renderSheet();draw()})}
+function planSet(o,deleted){const op={action:'plan_set',id:o.id||('c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5)),type:o.type,pname:o.name,sub:o.sub||'',x:o.x,y:o.y,deleted:deleted?1:0};
+  SHARED=SHARED.filter(r=>r.id!==op.id).concat([planRow(op)]);store.set('plan',SHARED);applyPlan();REP.pend.push(op);repSave();
+  state.sheet=null;state.sel=null;renderSheet();draw();flash(deleted?'Repère supprimé pour tous.':'Repère enregistré pour tous.');repFlush()}
+
+/* --- Quai : imprimante, filmeuse et dépalettiseur les plus proches (à pied, hors matériel signalé HS) --- */
+let NEAR_LAST=[];
+function nearFrom(t){if(t._near)return t._near;const src=cellOf(t);if(src<0)return[];const{dist}=dijkstra(src,null),out=[];
+  for(const type of['imprimante','filmeuse','depalettiseur']){let best=null,bd=Infinity;for(const p of PRINTERS.concat(POIS)){if(p.type!==type||hsNear(p,type))continue;const pt=T.poi(p);for(const g of goalsOf(pt))if(dist[g]<bd){bd=dist[g];best=pt}}if(best)out.push({type,t:best,len:bd})}
+  t._near=out;return out}
+function nearHtml(t){const n=nearFrom(t);NEAR_LAST=n;if(!n.length)return'';return`<div class="near"><div class="lbl">Au plus près de ce quai</div>${n.map((x,i)=>`<div class="row"><span class="grow"><b>${esc(x.t.label)}</b> <span class="small">· ${Math.round(x.len)} m</span></span><button class="linkbtn" data-ngo="${i}">Y aller</button></div>`).join('')}</div>`}
+
+/* --- Admin : comptes des collaborateurs --- */
+const ADM={list:null,open:null,loading:false,err:''};
+const rateQ=(q,f)=>(q.set&&q.set.rate&&q.set.rate[f])||S.set.rate[f]||100;
+const hOfQ=(q,x)=>x.f==='autre'?(x.min||0)/60:x.n/rateQ(q,x.f);
+function calcQ(q,k){const e=(q.data||{})[k]||[];let h=0,c=0;e.forEach(x=>{h+=hOfQ(q,x);if(x.f!=='autre')c+=x.n});return{h,c,e}}
+const dhQ=(q,k)=>{const x=(q.hrs||{})[k];return x>0?x:((q.set&&q.set.h)||7)};
+function monthQ(q,k){const pre=k.slice(0,7);let H=0,Wh=0,n=0;Object.keys(q.data||{}).forEach(d=>{if(d.slice(0,7)===pre){const c=calcQ(q,d);if(c.e.length){H+=c.h;Wh+=dhQ(q,d);n++}}});return{avg:Wh?H/Wh:0,n}}
+const mLabelQ=(q,x)=>x.f==='autre'?esc(x.label||'Autre')+(x.start?' · '+esc(x.start)+'–'+esc(x.end):'')+' · '+fd(x.min||1):nameOf(x.f)+' '+f0(x.n)+' · '+fd(x.n/rateQ(q,x.f)*60);
+async function admLoad(){const A=acct.who();if(!A)return;ADM.loading=true;ADM.err='';renderAdmin();
+  try{const r=await acct.call({action:'admin_accounts',name:A.name,hash:A.hash});if(!r.ok)throw r.error;ADM.list=r.accounts.sort((a,b)=>a.name.localeCompare(b.name,'fr'))}
+  catch(e){ADM.err=e==='forbidden'?'Accès refusé : ce compte n\'est pas administrateur.':e==='action'||e==='unknown'?'Le serveur n\'est pas encore à jour.':'Chargement impossible (réseau).'}
+  ADM.loading=false;renderAdmin()}
+function renderAdmin(){const el=$('#adminCard');if(!el)return;if(!isAdmin()){el.hidden=true;return}el.hidden=false;const k=todayK(),mon=monday(new Date());
+  const rows=(ADM.list||[]).map((a,i)=>{const q=a.quota||{},c=calcQ(q,k),p=c.h/dhQ(q,k),m=monthQ(q,k),open=ADM.open===a.name;
+    let det='';if(open){const days=[];for(let j=0;j<6;j++){const d=new Date(mon);d.setDate(d.getDate()+j);const dk=iso(d),cc=calcQ(q,dk);days.push(`<tr><td>${DJ[j]} ${d.getDate()}</td><td>${cc.e.length?Math.round(cc.h/dhQ(q,dk)*100)+' % · '+f0(cc.c)+' colis':'—'}</td></tr>`)}
+      det=`<table class="tbl">${days.join('')}</table><div class="lbl">Missions du jour</div><div class="mchips">${c.e.length?c.e.map(x=>`<span class="mchip" style="padding-right:10px">${mLabelQ(q,x)}</span>`).join(''):'<span class="small">Aucune mission aujourd\'hui.</span>'}</div>`}
+    return`<li><div class="top" data-acc="${i}"><span class="grow"><b>${esc(a.name)}</b>${a.admin?' <span class="chip dyn">Admin</span>':''}<br><span class="small">Aujourd'hui ${c.e.length?Math.round(p*100)+' % · '+f0(c.c)+' colis':'—'} · mois ${m.n?Math.round(m.avg*100)+' %':'—'}${a.updated?' · synchro '+ago(a.updated):''}</span></span><span class="small">${open?'−':'+'}</span></div>${det}</li>`}).join('');
+  el.innerHTML=`<div class="lbl">Administration</div><p class="note">Comptes des collaborateurs (45 derniers jours). Sur le plan, touche un repère pour le modifier ou un endroit pour en ajouter un. Tes signalements peuvent être permanents.</p>${ADM.list?`<ul class="acc">${rows||'<li class="small">Aucun compte.</li>'}</ul>`:''}${ADM.err?`<p class="note" style="color:var(--bad)">${esc(ADM.err)}</p>`:''}<button class="btn" id="admLoad"${ADM.loading?' disabled':''}>${ADM.loading?'Chargement…':ADM.list?'Actualiser les comptes':'Voir les comptes collaborateurs'}</button>`;
+  $('#admLoad').onclick=admLoad;el.querySelectorAll('[data-acc]').forEach(t=>t.onclick=()=>{const a=ADM.list[+t.dataset.acc];ADM.open=ADM.open===a.name?null:a.name;renderAdmin()})}
+
+/* --- Apparence : automatique (selon le téléphone), clair ou sombre --- */
+function applyTheme(t){const r=document.documentElement;if(t==='light'||t==='dark')r.dataset.theme=t;else delete r.dataset.theme;document.querySelectorAll('#themeSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.th===(t||'auto')))}
+document.querySelectorAll('#themeSeg button').forEach(b=>b.onclick=()=>{store.set('theme',b.dataset.th);applyTheme(b.dataset.th)});
+applyTheme(store.get('theme','auto'));
+
+/* --- Fenêtre explicative « ? » --- */
+const HELP=[
+  ['Prod','Prod : missions et quotas','<p>Choisis le type de mission et le nombre de colis : l\'appli calcule le temps prévu (colis ÷ quota du type) et lance un chrono qui sonne à la fin.</p><ul><li>Quotas actuels : '+'{Q}'+'.</li><li><b>Tâches annexes</b> (réception, inventaire, nettoyage…) : choisis la tâche dans la liste, l\'heure de début est prise automatiquement ; à la fin, renseigne l\'heure de fin. Le temps passé compte dans ta journée.</li></ul>'],
+  ['Plan','Plan : trouver et y aller','<ul><li>Tape un emplacement (« b07012 »), une allée, un quai, une imprimante, une filmeuse ou un dépalettiseur : l\'itinéraire s\'affiche avec le temps à pied.</li><li><b>Où suis-je ?</b> : tape l\'emplacement devant toi (le plus fiable), ou utilise le GPS.</li><li><b>Sens de circulation en serpent</b> : allée impaire dans un sens, allée paire dans l\'autre. Des flèches s\'affichent en zoomant ; l\'itinéraire ne remonte jamais une allée à contresens.</li><li><b>Quai</b> : l\'appli indique aussi l\'imprimante, la filmeuse et le dépalettiseur les plus proches.</li></ul>'],
+  ['Signalements','Signalements (comme Waze)','<ul><li>Bouton orange ⚠ sur le plan : filmeuse HS, flaque, allée bloquée, casse…</li><li>Tout le monde les voit : l\'appli s\'actualise toute seule toutes les 3 minutes, sans écran de chargement.</li><li>« Toujours là » prolonge un signalement, « C\'est réglé » le retire pour tous. Sinon il expire seul (2 h pour une allée bloquée, 24 h pour une filmeuse HS…).</li><li>L\'itinéraire contourne les allées bloquées et les obstacles, et « la plus proche » ignore le matériel HS.</li><li>Sans réseau, les envois attendent et partent dès que possible.</li></ul>'],
+  ['Aide','Aide : l\'assistant','<p>Pose une question : emplacement, sens d\'une allée, quota, temps pour X colis, ton avancement, la prime, les signalements… Il fonctionne sans réseau et répond uniquement avec les infos de l\'appli. Pour un process d\'entrepôt, demande à ton chef d\'équipe.</p>'],
+  ['Profil','Profil : journée, prime, réglages','<ul><li>Pourcentage du jour = heures équivalentes (colis ÷ quota) ÷ heures travaillées.</li><li>La <b>prime</b> demande 100 % de moyenne sur tous les jours travaillés du mois.</li><li>Colle ton planning pour remplir les heures de la semaine.</li><li>Apparence : automatique, clair ou sombre.</li></ul>'],
+  ['Compte','Compte et badge','<ul><li>Connecte-toi en <b>scannant ton badge</b> (ou nom + mot de passe). Un badge inconnu crée ton compte : il suffit d\'indiquer ton nom.</li><li>Déjà un compte ? Profil › « Associer mon badge ».</li><li>Tes missions et repères sont sauvegardés et retrouvés sur n\'importe quel téléphone.</li></ul>'],
+  ['Admin','Administrateurs','<ul><li>Profil › Administration : voir les comptes des collaborateurs (jour, semaine, mois).</li><li>Plan : toucher un repère pour le déplacer, le renommer ou le supprimer ; toucher un endroit pour ajouter un repère commun. Visible par tous.</li><li>Signalements avec durée au choix, jusqu\'à permanent.</li></ul>']];
+function openHelp(sec){const q=FM.map(([k,n])=>n+' '+S.set.rate[k]+' colis/h').join(', ');
+  openModal(`<h2 class="mtitle">Comment ça marche</h2><p class="note">L'appli t'aide à préparer : missions chronométrées, plan avec itinéraire, signalements partagés et assistant.</p>${HELP.filter(h=>h[0]!=='Admin'||isAdmin()).map(([k,t,b])=>`<details${k===sec?' open':''}><summary>${esc(t)}</summary>${b.replace('{Q}',esc(q))}</details>`).join('')}`)}
+document.querySelectorAll('[data-help]').forEach(b=>b.onclick=()=>openHelp(b.dataset.help));
+
+/* --- Tâches annexes : heure de début automatique, heure de fin à renseigner --- */
+const ANNEX=['Réception','Inventaire','Rangement / réappro','Nettoyage','Chargement camion','Casse / litiges','Formation','Réunion','Aide autre secteur'];
+$('#autreSel').innerHTML='<option value="">Choisir une tâche…</option>'+ANNEX.map(a=>`<option>${esc(a)}</option>`).join('')+'<option value="__autre">Autre (préciser)</option>';
+const hm=d=>pad(d.getHours())+':'+pad(d.getMinutes());
+const annexLabel=()=>{const v=$('#autreSel').value;return v==='__autre'?$('#autreLbl').value.trim():v};
+$('#autreSel').addEventListener('change',()=>{$('#autreLbl').hidden=$('#autreSel').value!=='__autre';if(!$('#autreLbl').hidden)$('#autreLbl').focus();planned()});
+setInterval(()=>{const e=$('#annexStart');if(e&&!$('#autreF').hidden)e.textContent=hm(new Date())},15000);
 
 
 const retheme=()=>{if(G){buildBase();draw()}};
@@ -832,7 +1004,7 @@ load().then(()=>{
 <script>
 /* Mises à jour automatiques : à l'ouverture et à chaque retour sur l'appli, on vérifie version.json.
    Si une nouvelle version existe, le service worker l'installe et la page se recharge (le chrono et les données sont conservés). */
-(()=>{const APP_VERSION='202611261010';if(!('serviceWorker' in navigator))return;
+(()=>{const APP_VERSION='202611261029';if(!('serviceWorker' in navigator))return;
   let reloading=false;const hadCtrl=!!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloading||!hadCtrl)return;reloading=true;try{sessionStorage.setItem('gp_upd','1')}catch(e){}location.reload()});
   try{if(sessionStorage.getItem('gp_upd')){sessionStorage.removeItem('gp_upd');const t=document.getElementById('updToast');t.hidden=false;setTimeout(()=>t.hidden=true,3000)}}catch(e){}
