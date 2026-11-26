@@ -120,7 +120,24 @@ textarea.inp{min-height:120px;resize:vertical;font-family:var(--f-mono);font-siz
 details.settings summary{cursor:pointer;font-weight:700;color:var(--muted);font-size:14px}
 .setgrid{display:grid;grid-template-columns:1fr 110px;gap:8px;align-items:center;margin-top:10px}
 .setgrid .inp{padding:8px 10px;font-size:16px}
-nav.tabbar{grid-template-columns:repeat(3,1fr)!important}
+nav.tabbar{grid-template-columns:repeat(4,1fr)!important}
+/* Assistant (onglet Aide) : discussion hors ligne, répond uniquement avec les données de l'appli */
+.chat{position:absolute;inset:0;display:flex;flex-direction:column}
+.msgs{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
+.msgs .in{max-width:560px;margin:0 auto;padding:16px max(14px,env(safe-area-inset-right,0px)) 10px max(14px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:10px}
+.msg{max-width:88%;padding:10px 13px;border-radius:16px;font-size:16px;line-height:1.4;overflow-wrap:anywhere}
+.msg.me{align-self:flex-end;background:var(--route);color:#fff;border-bottom-right-radius:5px}
+.msg.bot{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:5px;display:flex;flex-direction:column;gap:8px}
+.msg.bot p{margin:0} .msg.bot ul{margin:0;padding-left:20px}
+.msg.bot .btnrow .btn{padding:9px 12px;font-size:15px;flex:0 1 auto}
+.sugg{display:flex;gap:6px;overflow-x:auto;padding:4px 14px 8px;max-width:560px;width:100%;margin:0 auto;scrollbar-width:none}
+.sugg button{flex:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 12px;font-size:14px;font-weight:600;white-space:nowrap}
+.cin{display:flex;gap:8px;padding:8px max(12px,env(safe-area-inset-right,0px)) 10px max(12px,env(safe-area-inset-left,0px));background:var(--panel);border-top:1px solid var(--line)}
+.cin .wrapin{display:flex;gap:8px;max-width:560px;width:100%;margin:0 auto}
+.cin input{flex:1;min-width:0;border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:11px 16px;font-size:17px}
+.cin input:focus{outline:2px solid var(--route);background:var(--panel)}
+.cin button{flex:none;width:46px;height:46px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+.cin button svg{width:22px;height:22px}
 .bigin{font-family:var(--f-display);font-size:44px;text-align:center;padding:10px;font-variant-numeric:tabular-nums}
 .btn.xl{padding:18px;font-size:22px;font-family:var(--f-display);text-transform:uppercase;letter-spacing:.04em;border-radius:14px}
 .btn.xl:disabled{opacity:.45}
@@ -202,6 +219,14 @@ details.fold textarea.inp{min-height:90px}
     </div>
   </section>
 
+  <section class="view" id="vAide" hidden>
+    <div class="chat">
+      <div class="msgs" id="msgs"><div class="in" id="msgsIn" aria-live="polite"></div></div>
+      <div class="sugg" id="sugg"></div>
+      <form class="cin" id="chatForm" autocomplete="off"><div class="wrapin"><input id="chatIn" enterkeyhint="send" placeholder="Pose ta question…" aria-label="Question"><button type="submit" aria-label="Envoyer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div></form>
+    </div>
+  </section>
+
   <section class="view scroll" id="vProfil" hidden>
     <div class="wrap">
       <h1 class="title">Profil</h1>
@@ -233,6 +258,7 @@ details.fold textarea.inp{min-height:90px}
 <nav class="tabbar" role="tablist">
   <button role="tab" data-v="Prod" aria-selected="true"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg></span>Prod</button>
   <button role="tab" data-v="Plan" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg></span>Plan</button>
+  <button role="tab" data-v="Aide" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 9.5h7M8.5 12.5h4"/></svg></span>Aide</button>
   <button role="tab" data-v="Profil" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></span>Profil</button>
 </nav>
 </div>
@@ -247,7 +273,7 @@ const strip=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
 const CELL_M=1, SPEED=1.1;
 
 let curView='Prod',needFit=true;
-function show(v){curView=v;document.querySelectorAll('nav.tabbar button').forEach(b=>b.setAttribute('aria-selected',b.dataset.v===v));for(const k of['Prod','Plan','Profil'])$('#v'+k).hidden=k!==v;if(v==='Plan')requestAnimationFrame(()=>{resize();if(needFit&&base&&vw){needFit=false;if(state.route)fitCells(state.route.cells,[state.from,state.to]);else fitAll()}});if(v==='Prod')renderProd();if(v==='Profil')renderProfil();store.set('tab3',v)}
+function show(v){curView=v;document.querySelectorAll('nav.tabbar button').forEach(b=>b.setAttribute('aria-selected',b.dataset.v===v));for(const k of['Prod','Plan','Aide','Profil'])$('#v'+k).hidden=k!==v;if(v==='Aide')chatOpen();if(v==='Plan')requestAnimationFrame(()=>{resize();if(needFit&&base&&vw){needFit=false;if(state.route)fitCells(state.route.cells,[state.from,state.to]);else fitAll()}});if(v==='Prod')renderProd();if(v==='Profil')renderProfil();store.set('tab3',v)}
 document.querySelectorAll('nav.tabbar button').forEach(b=>b.onclick=()=>show(b.dataset.v));
 
 let W,H,G,REACH,LOCS=[],LOC_AT,AISLES=new Map(),ZONES=new Map(),QUAIS=[],START0;
@@ -582,6 +608,82 @@ $('#planRead').onclick=()=>{const r=parsePlan($('#planTxt').value),pv=$('#planOu
   r.items.forEach(it=>{const d=new Date(mon);d.setDate(d.getDate()+it.di);it.k=iso(d);const dn=DJ[it.di]+' '+d.getDate();if(it.bad)o+=`<tr><td>${dn}</td><td>Non reconnu : ${esc(it.raw)}</td></tr>`;else{ok++;o+=`<tr><td>${dn}</td><td>${it.rest?'Repos':esc(it.label)+' → '+f2(it.h)+' h'}</td></tr>`}});
   o+='</table>';if(ok){o+='<button class="btn primary" id="planApply" style="margin-top:8px;width:100%">Appliquer à cette semaine</button>';PP={mon,items:r.items}}else PP=null;pv.innerHTML=o;
   const b=$('#planApply');if(b)b.onclick=()=>{PP.items.forEach(it=>{if(it.bad)return;if(it.rest){delete S.hrs[it.k];S.plan[it.k]='Repos'}else{const h=Math.round(it.h*100)/100;if(Math.abs(h-S.set.h)<.001)delete S.hrs[it.k];else S.hrs[it.k]=h;S.plan[it.k]=it.label}});saveS();wk=new Date(PP.mon);pv.innerHTML='<p class="note">Planning appliqué. Les heures de chaque jour restent modifiables.</p>';PP=null;renderProfil()}};
+/* --- Onglet Aide : assistant hors ligne ---
+   Il ne se sert que des données déjà dans l'appli (plan, emplacements, quais, imprimantes, repères,
+   sens de circulation, quotas, missions du jour) et de la description de l'appli ci-dessous.
+   Aucune donnée réseau : tout est calculé sur le téléphone. */
+const SENS_TXT={1:'du haut vers le bas',2:'du bas vers le haut',3:'de la gauche vers la droite',4:'de la droite vers la gauche'};
+const ENTREE_TXT={1:'entre par le haut, sors par le bas',2:'entre par le bas, sors par le haut',3:'entre par la gauche, sors par la droite',4:'entre par la droite, sors par la gauche'};
+const HOWTO=[
+  {k:/(DEMARR|LANCER|COMMENCER|NOUVELLE).*MISSION|MISSION.*(DEMARR|LANCER|COMMENC)|COMMENT.*CHRONO/,a:'<p>Pour démarrer une mission :</p><ul><li>Va dans l\'onglet <b>Prod</b>.</li><li>Choisis le type (Hyper, Market, Proxi, Carton, Cash).</li><li>Tape le nombre de colis : le temps prévu s\'affiche.</li><li>Appuie sur <b>Démarrer</b>. Le chrono sonne et vibre quand le temps est écoulé.</li></ul>',go:'Prod'},
+  {k:/MISSION AUTRE|AUTRE MISSION|\bAUTRE\b.*(MISSION|TYPE)|INVENTAIRE|RECEPTION|NETTOYAGE/,a:'<p>Pour une tâche hors quota (inventaire, réception, nettoyage…) : dans <b>Prod</b>, choisis <b>Autre</b>, précise la mission puis démarre. Le chrono compte ton temps et l\'ajoute à ta journée.</p>',go:'Prod'},
+  {k:/PAUSE|ARRETER LE CHRONO|STOPPER|MISSION FINIE|TERMINER/,a:'<p>Pendant une mission, le chrono a deux boutons : <b>Pause</b> (puis Reprendre) et <b>Mission finie</b>. Les colis sont comptés dès le démarrage.</p>'},
+  {k:/REPERE|AJOUTER.*(FILMEUSE|CHARGEUR|POINT)|PLACER/,a:'<p>Pour ajouter un repère (filmeuse, chargeur, bureau…) : <b>Profil › Repères du plan › Ajouter un repère sur le plan</b>, puis touche l\'endroit sur le plan. Il devient cherchable.</p>',go:'Profil'},
+  {k:/PLANNING|HORAIRE|EMPLOI DU TEMPS/,a:'<p>Dans <b>Profil › Planning de la semaine</b>, colle ton planning (ex. « Lundi : 6h00-13h30 »). L\'appli lit les horaires, retire la pause et remplit les heures de chaque jour.</p>',go:'Profil'},
+  {k:/HEURES? (TRAVAILL|DU JOUR)|CHANGER.*HEURES|MODIFIER.*HEURES/,a:'<p>Les heures travaillées d\'un jour se changent dans <b>Profil</b> : choisis le jour puis modifie « Heures travaillées ce jour ». Par défaut : '+'{H}'+' h.</p>',go:'Profil'},
+  {k:/GPS|OU SUIS.JE|ME LOCALISER|MA POSITION|LOCALIS/,a:'<p>Sur le <b>Plan</b>, appuie sur <b>Où suis-je ?</b> : le plus fiable est de taper l\'emplacement devant toi. Le GPS marche mal en intérieur, mais il se cale tout seul au fil des positions que tu indiques.</p>',go:'Plan'},
+  {k:/COMPTE|CONNEX|MOT DE PASSE|SYNCHRO|AUTRE TELEPHONE|DECONNECT/,a:'<p>Ton compte (nom + mot de passe) sauvegarde tes missions et repères. Sur un autre téléphone, connecte-toi avec le même nom et le même mot de passe. Tout est dans <b>Profil</b>.</p>',go:'Profil'},
+  {k:/INSTALL|ECRAN D.ACCUEIL|MISE A JOUR|METTRE A JOUR|APPLI/,a:'<p>Pour installer l\'appli : sur iPhone (Safari) <b>Partager › Sur l\'écran d\'accueil</b>, sur Android (Chrome) <b>⋮ › Installer l\'application</b>. Elle se met à jour toute seule à l\'ouverture et marche hors ligne.</p>'},
+  {k:/DYNAMIQUE/,a:'<p>Un emplacement <b>dynamique</b> est signalé par une étiquette orange quand tu le cherches. Les autres emplacements sont fixes.</p>'},
+  {k:/(FORMAT|LIRE|LECTURE|COMPRENDRE).*(EMPLACEMENT|ADRESSE|CODE)|EMPLACEMENT.*(VEUT DIRE|SIGNIFIE)/,a:'<p>Un emplacement s\'écrit <b>Zone-Allée-Position</b>, par exemple <span class="code">B-07-012</span> : zone B, allée B-07, position 012. Tu peux le taper sans tirets : « b07012 ».</p>'},
+  {k:/PRIME.*(MARCHE|CALCUL|COMMENT|CONDITION)|COMMENT.*PRIME/,a:'<p>La prime ({P} €) demande une moyenne de <b>100 % ou plus</b> sur tous les jours travaillés du mois. Le pourcentage d\'un jour = heures équivalentes (colis ÷ quota du type) ÷ heures travaillées.</p>'},
+];
+const SUGG0=['Où est B-07-012 ?','Imprimante la plus proche','Sens de l\'allée A-03','Temps pour 200 colis hyper','Où j\'en suis ?','Comment ajouter un repère ?'];
+let CHAT=store.get('chat',[]);
+const fromT=()=>state.from||(START0?T.start():null);
+function distTxt(t){const f=fromT();if(!f||!REACH)return'';const r=route(f,t);if(!r)return'';return`<p class="small">Depuis ${esc(f.label)} : environ <b>${fmtTime(r.len)}</b> (${Math.round(r.len*CELL_M)} m).</p>`}
+function sensTxt(a){return a&&a.dir?`Sens de circulation : <b>${SENS_TXT[a.dir]}</b> (${ENTREE_TXT[a.dir]}).`:'Pas de sens imposé dans cette allée.'}
+const goBtn=t=>({label:'Y aller',fn:()=>{tour=null;show('Plan');setTo(t)}});
+const tabBtn=v=>({label:'Ouvrir '+v,fn:()=>show(v)});
+function zoneOf(q){const m=q.match(/\bZONE\s+([A-Z])\b/);return m&&ZONES.has(m[1])?m[1]:null}
+function aisleIn(q){const m=q.match(/(?:^|[^A-Z0-9])([A-Z])\s*-?\s*(\d{1,2})(?:\s*-?\s*(\d{1,3}))?(?![0-9])/);if(!m||!ZONES.has(m[1]))return null;const aid=m[1]+'-'+m[2].padStart(2,'0');if(!AISLES.has(aid))return null;let loc=null;if(m[3]!==undefined){const id=aid+'-'+m[3].padStart(3,'0');loc=LOCS.find(o=>o.id===id)||null;if(!loc)return{aisle:AISLES.get(aid),missing:id}}return{aisle:AISLES.get(aid),loc}}
+function answer(raw){const q=strip(raw).replace(/[’']/g,"'").replace(/\s+/g,' ').trim();
+  if(!q)return null;
+  if(!LOCS.length)return{h:'<p>Le plan est encore en cours de chargement, réessaie dans un instant.</p>'};
+  if(/^(BONJOUR|SALUT|HELLO|COUCOU|BJR|SLT|HEY|YO)\b/.test(q)&&q.length<25)return{h:'<p>Salut ! Je suis l\'assistant de l\'appli. Je connais le plan, les emplacements, les quais, les imprimantes, le sens des allées, les quotas et ta journée. Pose ta question.</p>',s:SUGG0};
+  if(/^(MERCI|OK|D'ACCORD|SUPER|PARFAIT|TOP|CIMER)\b/.test(q))return{h:'<p>Avec plaisir. Bon courage pour la prépa !</p>'};
+  if(/^(AIDE|HELP|\?)$|QUE SAIS|TU (PEUX|SAIS)|QUOI DEMANDER|QUESTIONS/.test(q))return{h:'<p>Je peux t\'aider pour :</p><ul><li>trouver un emplacement, une allée, un quai ou une imprimante, et t\'y emmener ;</li><li>le sens de circulation des allées ;</li><li>le temps prévu selon le nombre de colis et le type ;</li><li>ton avancement du jour et la prime ;</li><li>l\'utilisation de l\'appli (mission, repères, planning, compte…).</li></ul><p class="small">Je réponds uniquement avec les infos de l\'appli. Pour un process d\'entrepôt, demande à ton chef d\'équipe.</p>',s:SUGG0};
+  // Imprimante / filmeuse la plus proche
+  const nt=/FILMEUSE/.test(q)?'filmeuse':/IMPRIM|PRINT/.test(q)?'imprimante':null;
+  if(nt&&/PROCHE|PRES|COTE|PROXIMIT|PLUS PRES|LA OU/.test(q)){const t=nearest(nt);if(!t)return{h:nt==='filmeuse'?'<p>Aucune filmeuse n\'est sur le plan pour l\'instant. Tu peux l\'ajouter dans Profil › Repères du plan.</p>':'<p>Je ne trouve pas d\'imprimante sur le plan.</p>'};return{h:`<p>${nt==='filmeuse'?'La filmeuse':'L\'imprimante'} la plus proche est <b>${esc(t.label)}</b>.</p>${distTxt(t)}`,a:[goBtn(t)]}}
+  // Sens de circulation
+  const ai=aisleIn(q);
+  if(/SENS|CIRCUL|SERPENT|DIRECTION|CONTRE.?SENS|PAR OU (ENTRER|RENTRER|PASSER)|ENTRER|RENTRER/.test(q)){
+    if(ai&&ai.aisle){const a=ai.aisle;return{h:`<p>Allée <b>${esc(a.id)}</b> : ${a.dir?`<b>${SENS_TXT[a.dir]}</b>. Tu ${ENTREE_TXT[a.dir]}.`:'pas de sens imposé.'}</p>`,a:[goBtn(T.aisle(a))]}}
+    return{h:'<p>Les allées se font <b>en serpent</b>, sans jamais remonter une allée à contresens :</p><ul><li>allées verticales (A, B, C, E, K) : impaire du haut vers le bas, paire du bas vers le haut ;</li><li>allées horizontales (F, G, I, J) : impaire de la gauche vers la droite, paire de la droite vers la gauche.</li></ul><p class="small">L\'itinéraire du plan respecte ce sens, et des flèches s\'affichent quand tu zoomes. La zone D et les rangées isolées n\'ont pas de sens imposé.</p>',s:['Sens de l\'allée F-02','Sens de l\'allée C-05']}}
+  // Quotas et temps prévus
+  const fm=FM.find(([k])=>q.includes(k.toUpperCase()));const nc=q.match(/(\d{1,5})\s*(COLIS|C\b)/)||(fm&&q.match(/\b(\d{1,5})\b/));
+  if(nc&&(fm||/COLIS/.test(q))&&!ai){const n=parseInt(nc[1],10);if(!fm)return{h:`<p>Pour ${f0(n)} colis, ça dépend du type :</p><ul>${FM.map(([k,nm])=>`<li>${nm} : <b>${fd(n/S.set.rate[k]*60)}</b></li>`).join('')}</ul>`};const[k,nm]=fm;return{h:`<p>${f0(n)} colis en ${nm} (${S.set.rate[k]} colis/h) : temps prévu <b>${fd(n/S.set.rate[k]*60)}</b>.</p>`,a:[tabBtn('Prod')]}}
+  if(/QUOTA|CADENCE|COLIS.?(\/|PAR).?H|RYTHME|COMBIEN DE COLIS/.test(q)&&!/PRIME/.test(q)){if(fm){const[k,nm]=fm;return{h:`<p>Quota ${nm} : <b>${S.set.rate[k]} colis/h</b>, soit ${f0(S.set.rate[k]*dh(todayK()))} colis pour une journée de ${f2(dh(todayK()))} h.</p>`}}return{h:`<p>Quotas actuels :</p><ul>${FM.map(([k,nm])=>`<li>${nm} : <b>${S.set.rate[k]} colis/h</b></li>`).join('')}</ul><p class="small">Ils se règlent dans Profil › Réglages.</p>`}}
+  // Chrono en cours
+  if(/CHRONO|MINUTEUR|TIMER|TEMPS RESTANT|IL ME RESTE COMBIEN DE TEMPS/.test(q)&&!/COMMENT/.test(q)){if(!TM)return{h:'<p>Aucun chrono en cours. Démarre une mission dans l\'onglet Prod.</p>',a:[tabBtn('Prod')]};const l=tLeft();return{h:TM.up?`<p>Mission « ${esc(TM.label)} » : ${fc(l)} passées${TM.run?'':' (en pause)'}.</p>`:`<p>${nameOf(TM.f)} · ${f0(TM.n)} colis : ${l>0?'il reste <b>'+fc(l)+'</b>':'temps dépassé de <b>'+fc(l).replace('+','')+'</b>'}${TM.run?'':' (en pause)'}.</p>`,a:[tabBtn('Prod')]}}
+  // Prime
+  if(/PRIME/.test(q)&&!/COMMENT|CALCUL|MARCHE|CONDITION/.test(q)){const ms=monthStats(todayK()),av=ms.W?ms.H/ms.W:0;if(!ms.n)return{h:`<p>Aucun jour travaillé enregistré ce mois-ci. La prime (${f2(S.set.prime||0)} €) demande 100 % de moyenne sur les jours travaillés du mois.</p>`};return{h:`<p>Ce mois-ci : <b>${Math.round(av*100)} %</b> de moyenne sur ${ms.n} jour${ms.n>1?'s':''}. ${av>=1?'Tu es au standard : prime de <b>'+f2(S.set.prime||0)+' €</b> pour l\'instant.':'Il manque '+f2(ms.W-ms.H)+' h équivalentes pour revenir à 100 %.'}</p>`,a:[tabBtn('Profil')]}}
+  // Avancement du jour
+  if(/J'EN SUIS|AVANCEMENT|MA JOURNEE|AUJOURD|OBJECTIF|RESTE|POURCENT|%|BILAN|COMBIEN J'AI/.test(q)){const k=todayK(),c=calc(k),hd=dh(k),p=c.h/hd,rem=Math.max(0,hd-c.h);if(!c.e.length)return{h:`<p>Aucune mission enregistrée aujourd'hui. Objectif : ${f2(hd)} h équivalentes.</p>`,a:[tabBtn('Prod')]};const r=S.set.rate[S.fmt]||S.set.rate.hyper,nm=nameOf(S.fmt==='autre'?'hyper':S.fmt);return{h:`<p>Aujourd'hui : ${c.e.length} mission${c.e.length>1?'s':''}, ${f0(c.c)} colis, <b>${Math.round(p*100)} %</b> (${f2(c.h)} h sur ${f2(hd)} h).</p><p>${p>=1?'Quota de la journée atteint.':'Reste '+f2(rem)+' h, soit environ '+f0(rem*r)+' colis en '+nm+'.'}</p>`,a:[tabBtn('Profil')]}}
+  // Fonctionnement de l'appli
+  for(const h of HOWTO)if(h.k.test(q))return{h:h.a.replace('{H}',f2(S.set.h)).replace('{P}',f2(S.set.prime||0)),a:h.go?[tabBtn(h.go)]:[]};
+  // Emplacement / allée
+  if(ai){if(ai.missing)return{h:`<p>L'emplacement <span class="code">${esc(ai.missing)}</span> n'existe pas sur le plan. L'allée ${esc(ai.aisle.id)} va de ${esc(ai.aisle.locs[0].pos)} à ${esc(ai.aisle.locs[ai.aisle.locs.length-1].pos)}.</p>`,a:[goBtn(T.aisle(ai.aisle))]};
+    if(ai.loc){const t=T.loc(ai.loc);return{h:`<p><span class="code" style="font-size:18px">${esc(t.label)}</span> : zone ${esc(ai.loc.zone)}, allée ${esc(ai.loc.aisle)}, position ${esc(ai.loc.pos)}${ai.loc.dyn?' · <b>dynamique</b>':''}.</p><p class="small">${sensTxt(ai.aisle)}</p>${distTxt(t)}`,a:[goBtn(t)]}}
+    const a=ai.aisle,t=T.aisle(a);return{h:`<p>Allée <b>${esc(a.id)}</b> : ${a.locs.length} emplacements.</p><p class="small">${sensTxt(a)}</p>${distTxt(t)}`,a:[goBtn(t)]}}
+  const z=zoneOf(q);if(z){const as=[...AISLES.values()].filter(a=>a.id[0]===z);return{h:`<p>Zone <b>${z}</b> : ${as.length} allées (${as.map(a=>a.id).join(', ')}), ${f0(as.reduce((s,a)=>s+a.locs.length,0))} emplacements.</p>`}}
+  // Quai, imprimante, repère : recherche du plan
+  const mq=q.match(/QUAI\s*(?:N\W?\s*)?0*(\d{1,3})/);if(mq){const r=search('quai '+mq[1],1)[0];if(r)return{h:`<p><b>${esc(r.label)}</b> trouvé.</p>${distTxt(r)}`,a:[goBtn(r)]};return{h:`<p>Je ne trouve pas le quai ${esc(mq[1])}. Les quais vont de ${QUAIS.reduce((m,x)=>Math.min(m,x.num),999)} à ${QUAIS.reduce((m,x)=>Math.max(m,x.num),0)}.</p>`}}
+  const words=q.replace(/\b(OU|EST|SE|TROUVE|LA|LE|LES|L'|UN|UNE|DE|DU|DES|C'EST|ALLER|VA|JE|VEUX|CHERCHE|TROUVER|EMMENE|MOI|STP|SVP|S'IL|TE|PLAIT|IL|Y|A|AU|QUEL|QUELLE|COMMENT|\?|!)\b/g,' ').replace(/\s+/g,' ').trim();
+  if(words.length>=2){const r=search(words,4).filter(t=>t.kind==='poi'||t.kind==='quai'||t.kind==='start');if(r.length){const t=r[0];return{h:`<p><b>${esc(t.label)}</b>${t.sub?' · '+esc(t.sub):''}</p>${distTxt(t)}${r.length>1?`<p class="small">Aussi : ${r.slice(1).map(x=>esc(x.label)).join(', ')}.</p>`:''}`,a:[goBtn(t)]}}}
+  if(/^(DEP|DEPART|ZONE DE DEPART)/.test(words))return{h:'<p>La zone de départ préparation est le point de départ par défaut.</p>',a:[goBtn(T.start())]};
+  return{h:'<p>Je n\'ai pas compris, ou l\'info n\'est pas dans l\'appli. Essaie avec un emplacement (ex. « B-07-012 »), un quai, une imprimante, ou une question sur le sens des allées, les quotas ou ta journée.</p><p class="small">Pour les process d\'entrepôt, demande à ton chef d\'équipe.</p>',s:SUGG0}}
+function chatRender(){const box=$('#msgsIn');
+  box.innerHTML=(CHAT.length?'':`<div class="msg bot"><p>Salut ! Pose-moi une question sur le plan, les allées, les quotas ou ta journée. Je fonctionne sans réseau.</p></div>`)+CHAT.map(m=>m.me?`<div class="msg me">${esc(m.t)}</div>`:`<div class="msg bot">${m.h}</div>`).join('');
+  // Les boutons d'action (Y aller, Ouvrir…) restent sur la dernière réponse uniquement.
+  const last=CHAT[CHAT.length-1];if(last&&!last.me&&last.live&&last.live.length){const row=document.createElement('div');row.className='btnrow';last.live.forEach((x,j)=>{const b=document.createElement('button');b.className='btn'+(j?'':' primary');b.textContent=x.label;b.onclick=x.fn;row.appendChild(b)});box.lastElementChild.appendChild(row)}
+  const s=(last&&!last.me&&last.s)||(CHAT.length?[]:SUGG0);$('#sugg').innerHTML=s.map(x=>`<button>${esc(x)}</button>`).join('');$('#sugg').hidden=!s.length;$('#sugg').querySelectorAll('button').forEach((b,i)=>b.onclick=()=>chatAsk(s[i]));
+  requestAnimationFrame(()=>{const m=$('#msgs');m.scrollTop=m.scrollHeight})}
+function chatAsk(t){t=String(t).trim().slice(0,200);if(!t)return;CHAT.push({me:1,t});const r=answer(t)||{h:'<p>…</p>'};const live=(r.a||[]);CHAT.push({h:r.h,s:r.s,live});CHAT=CHAT.slice(-40);store.set('chat',CHAT.map(({live,...m})=>m));chatRender()}
+function chatOpen(){chatRender()}
+$('#chatForm').addEventListener('submit',e=>{e.preventDefault();const i=$('#chatIn');chatAsk(i.value);i.value=''});
+
 /* --- Compte : nom + mot de passe, données synchronisées dans le Google Sheet « MapPrep – Comptes » --- */
 var acct=(()=>{const ENDPOINT='https://script.google.com/macros/s/AKfycbwUik2hqOs-tCVCFRxaV_5yoNcrxfdrEymwrDhJdc6y3WlTyLSVAAf-mJvukF9aztbWag/exec';
   let A=store.get('acct',null),timer=null,busy=false,again=false,msg='',err='';
@@ -638,7 +740,7 @@ load().then(()=>{
 <script>
 /* Mises à jour automatiques : à l'ouverture et à chaque retour sur l'appli, on vérifie version.json.
    Si une nouvelle version existe, le service worker l'installe et la page se recharge (le chrono et les données sont conservés). */
-(()=>{const APP_VERSION='202611260802';if(!('serviceWorker' in navigator))return;
+(()=>{const APP_VERSION='202611260954';if(!('serviceWorker' in navigator))return;
   let reloading=false;const hadCtrl=!!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloading||!hadCtrl)return;reloading=true;try{sessionStorage.setItem('gp_upd','1')}catch(e){}location.reload()});
   try{if(sessionStorage.getItem('gp_upd')){sessionStorage.removeItem('gp_upd');const t=document.getElementById('updToast');t.hidden=false;setTimeout(()=>t.hidden=true,3000)}}catch(e){}
